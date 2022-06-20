@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Detectable .Rmd files
+*.Rmd  linguist-detectable
+*.rmd  linguist-detectable
