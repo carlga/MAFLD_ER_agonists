@@ -36,14 +36,14 @@ library(edgeR)
 # Load data
 
 ```{r}
-# removed outlier sample PPT_5 for differential expression (see PCA plot, fig. 1C)
+# removed outlier sample PPT_HFD_male_4 for differential expression (see PCA plot, fig. 1C)
 # raw counts RNAseq
 raw_counts <- read.table(
   file = 'data/bulkRNAseq_mmus_rawcounts.tsv',
   stringsAsFactors = FALSE,
   sep = "\t",
   header = TRUE) %>%
-  dplyr::select(-c("PPT_5")) %>%
+  dplyr::select(-c("PPT_HFD_male_4")) %>%
   tibble::column_to_rownames("geneID") %>%
   as.matrix() 
 
@@ -53,7 +53,7 @@ design_meta <- read.table(
   stringsAsFactors = FALSE,
   sep = "\t",
   header = TRUE) %>% 
-  filter(sample != 'PPT_5')
+  filter(sample != 'PPT_HFD_male_4')
 
 # ensembl gene annotation (Mus musculus)
 gene_ann <- read.table(
