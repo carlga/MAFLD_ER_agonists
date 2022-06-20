@@ -1,0 +1,176 @@
+---
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'BulkRNAseq - Differential expression analysis'
+author:
+  - Christian Sommerauer
+  - Carlos Gallardo
+output:
+  html_document:
+    theme: flatly
+    toc: yes
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-0):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F)
+
+```
+
+```{r}
+# library import
+library(tidyverse)
+library(DESeq2)
+library(edgeR)
+
+```
+
+
+# Load data
+
+```{r}
+# removed outlier sample PPT_5 for differential expression (see PCA plot, fig. 1C)
+# raw counts RNAseq
+raw_counts <- read.table(
+  file = 'data/bulkRNAseq_mmus_rawcounts.tsv',
+  stringsAsFactors = FALSE,
+  sep = "\t",
+  header = TRUE) %>%
+  dplyr::select(-c("PPT_5")) %>%
+  tibble::column_to_rownames("geneID") %>%
+  as.matrix() 
+
+# design RNAseq
+design_meta <- read.table(
+  file = 'data/bulkRNAseq_mmus_design.tsv',
+  stringsAsFactors = FALSE,
+  sep = "\t",
+  header = TRUE) %>% 
+  filter(sample != 'PPT_5')
+
+# ensembl gene annotation (Mus musculus)
+gene_ann <- read.table(
+  file = 'data/ensemb_mmus_sep2019_annotation.tsv',
+  stringsAsFactors = FALSE,
+  sep = "\t",
+  header = TRUE,
+  fill = FALSE,
+  quote = "")
+
+```
+
+
+# Differential expression
+
+## Run DESeq2 pipeline
+
+```{r}
+ds_data <- DESeqDataSetFromMatrix(countData = raw_counts,
+                                 colData = design_meta,
+                                 design = ~ 0 + condition)
+ds_data <- estimateSizeFactors(ds_data)
+ds_data <- DESeq(ds_data)
+
+# filtering to minimum 15 counts in at least 8 samples
+ds_data <- ds_data[rowSums(counts(ds_data, normalized=TRUE) >= 15 ) >= 8, ]
+
+# annotations for gene background
+gene_ids_bg <- rownames(counts(ds_data, normalized=TRUE))
+gene_ann_bg <- gene_ann %>% 
+  filter(ensembl_gene_id %in% gene_ids_bg)
+
+# comparisons
+DESeq2_DEGs <- list(
+  CDmVsCDf = results(ds_data, contrast = c("condition", "CDm", "CDf")),
+  HFDmVsHFDf = results(ds_data, contrast = c("condition", "HFDm", "HFDf")),
+  CDfVsHFDf = results(ds_data, contrast = c("condition", "CDf", "HFDf")),
+  CDmVsHFDm = results(ds_data, contrast = c("condition", "CDm", "HFDm")),
+  DPNVsHFDm = results(ds_data, contrast = c("condition", "DPN", "HFDm")),
+  DIPVsHFDm = results(ds_data, contrast = c("condition", "DIP", "HFDm")),
+  E2VsHFDm = results(ds_data, contrast = c("condition","E2", "HFDm")),
+  PPTVsHFDm = results(ds_data, contrast = c("condition","PPT", "HFDm"))
+)
+
+# add annotation to DEG lists
+DESeq2_DEGs <- lapply(DESeq2_DEGs, as.data.frame)
+DESeq2_DEGs <- lapply(DESeq2_DEGs, rownames_to_column, var = "ensembl_gene_id")
+DESeq2_DEGs <- lapply(DESeq2_DEGs, inner_join, y = gene_ann, by = "ensembl_gene_id")
+
+```
+
+
+## edgeR pipeline
+
+```{r}
+groups <- design_meta$condition
+dge <- DGEList(raw_counts, group = groups)
+design <- model.matrix(~0 + groups)
+
+# filter on CPM
+dge <- dge[(rowSums(cpm(dge) > 1) >= 8), ]
+
+y_dge <- calcNormFactors(dge, method = "TMM")
+y_dge <- estimateGLMCommonDisp(y_dge, design)
+y_dge <- estimateGLMTrendedDisp(y_dge, design)
+y_dge <- estimateGLMTagwiseDisp(y_dge, design)
+
+fit_dge <- glmFit(y_dge, design)
+
+# comparisons
+edgeR_DEGs <- list(
+  CDmVsCDf = glmLRT(fit_dge, contrast = makeContrasts(groupsCDm-groupsCDf, levels = design)),
+  HFDmVsHFDf = glmLRT(fit_dge, contrast = makeContrasts(groupsHFDm-groupsHFDf, levels = design)),
+  CDfVsHFDf = glmLRT(fit_dge, contrast = makeContrasts(groupsCDf-groupsHFDf, levels = design)),
+  CDmVsHFDm = glmLRT(fit_dge, contrast = makeContrasts(groupsCDm-groupsHFDm, levels = design)),
+  DPNVsHFDm = glmLRT(fit_dge, contrast = makeContrasts(groupsDPN-groupsHFDm, levels = design)),
+  DIPVsHFDm = glmLRT(fit_dge, contrast = makeContrasts(groupsDIP-groupsHFDm, levels = design)),
+  E2VsHFDm = glmLRT(fit_dge, contrast = makeContrasts(groupsE2-groupsHFDm, levels = design)),
+  PPTVsHFDm = glmLRT(fit_dge, contrast = makeContrasts(groupsPPT-groupsHFDm, levels = design))
+)
+
+# calculate fdr and add annotation to DEG lists
+edgeR_DEGs <- lapply(edgeR_DEGs, function(x) as.data.frame(x$table))
+edgeR_DEGs <- lapply(edgeR_DEGs, rownames_to_column, var = "ensembl_gene_id")
+edgeR_DEGs <- lapply(edgeR_DEGs, function(x) mutate(x, padj = p.adjust(PValue, method = "fdr")))
+edgeR_DEGs <- lapply(edgeR_DEGs, inner_join, y = gene_ann, by = "ensembl_gene_id")
+
+```
+
+
+## Common DEGs (DESeq2 & edgeR)
+
+```{r}
+# filter DESeq2 results
+DESeq2_DEGs_filt <- lapply(DESeq2_DEGs, function(x) filter(x, abs(log2FoldChange) > log2(1.75) & padj < 0.05))
+
+# filter edgeR results
+edgeR_DEGs_filt <- lapply(edgeR_DEGs, function(x) filter(x, abs(logFC) > log2(1.75) & padj < 0.05))
+
+# intersect DEGs
+common_DEGs_filt <- mapply(function(a, b) filter(a, ensembl_gene_id %in% b$ensembl_gene_id), DESeq2_DEGs_filt, edgeR_DEGs_filt, SIMPLIFY=FALSE)
+
+```
+
+
+# Export DEGs
+
+```{r}
+DEGs <- list(unfilt = DESeq2_DEGs,
+             filt = common_DEGs_filt)
+
+saveRDS(DEGs, file = 'data/bulkRNAseq_mmus_DEGs.rds')
+
+```
+
+
+```{r}
+sessionInfo()
+
+```
