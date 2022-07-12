@@ -1,9 +1,8 @@
 ---
 title: 'Hepatoprotective effects of systemic ER activation'
 subtitle: 'BulkRNAseq - Differential expression analysis'
-author:
-  - Christian Sommerauer
-  - Carlos Gallardo
+author: 'Christian Sommerauer & Carlos Gallardo'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
     theme: flatly
@@ -57,7 +56,7 @@ design_meta <- read.table(
 
 # ensembl gene annotation (Mus musculus)
 gene_ann <- read.table(
-  file = 'data/ensemb_mmus_sep2019_annotation.tsv',
+  file = 'data/ensembl_mmus_sep2019_annotation.tsv',
   stringsAsFactors = FALSE,
   sep = "\t",
   header = TRUE,
@@ -88,8 +87,8 @@ gene_ann_bg <- gene_ann %>%
 
 # comparisons
 DESeq2_DEGs <- list(
-  CDmVsCDf = results(ds_data, contrast = c("condition", "CDm", "CDf")),
-  HFDmVsHFDf = results(ds_data, contrast = c("condition", "HFDm", "HFDf")),
+  CDfVsCDm = results(ds_data, contrast = c("condition", "CDf", "CDm")),
+  HFDfVsHFDm = results(ds_data, contrast = c("condition", "HFDf", "HFDm")),
   CDfVsHFDf = results(ds_data, contrast = c("condition", "CDf", "HFDf")),
   CDmVsHFDm = results(ds_data, contrast = c("condition", "CDm", "HFDm")),
   DPNVsHFDm = results(ds_data, contrast = c("condition", "DPN", "HFDm")),
@@ -106,7 +105,7 @@ DESeq2_DEGs <- lapply(DESeq2_DEGs, inner_join, y = gene_ann, by = "ensembl_gene_
 ```
 
 
-## edgeR pipeline
+## Run edgeR pipeline
 
 ```{r}
 groups <- design_meta$condition
@@ -125,8 +124,8 @@ fit_dge <- glmFit(y_dge, design)
 
 # comparisons
 edgeR_DEGs <- list(
-  CDmVsCDf = glmLRT(fit_dge, contrast = makeContrasts(groupsCDm-groupsCDf, levels = design)),
-  HFDmVsHFDf = glmLRT(fit_dge, contrast = makeContrasts(groupsHFDm-groupsHFDf, levels = design)),
+  CDfVsCDm = glmLRT(fit_dge, contrast = makeContrasts(groupsCDf-groupsCDm, levels = design)),
+  HFDfVsHFDm = glmLRT(fit_dge, contrast = makeContrasts(groupsHFDf-groupsHFDm, levels = design)),
   CDfVsHFDf = glmLRT(fit_dge, contrast = makeContrasts(groupsCDf-groupsHFDf, levels = design)),
   CDmVsHFDm = glmLRT(fit_dge, contrast = makeContrasts(groupsCDm-groupsHFDm, levels = design)),
   DPNVsHFDm = glmLRT(fit_dge, contrast = makeContrasts(groupsDPN-groupsHFDm, levels = design)),

@@ -4,3 +4,6 @@
 # Detectable .Rmd files
 *.Rmd  linguist-detectable
 *.rmd  linguist-detectable
+
+# Ignore .html files
+*.html linguist-detectable=false
