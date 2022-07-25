@@ -190,3 +190,34 @@ readGMT <- function(file) {
   names(res$genesets) <- res$geneset.names
   res
 }
+
+
+#' Performs gene set enrichment analysis
+#' @param gene.rnk A named vector of scores ranking genes
+#' @param gene.sets List with gene sets to test enrichment
+#' @param min.size Minimum size of gene sets to test
+#' @param max.size Maximum size of gene sets to test
+#' @param eps Sets boundary for calculating P value
+#' @param nproc Sets BPPARAM to use nproc workers 
+#' @return List with GSEA results
+#' 
+#' @author carlga
+#'
+runGSEA <- function(gene.rnk, gene.sets, min.size, max.size, eps = 0.0, nproc = 0) {
+  require(fgsea)
+  
+  res <- list()
+  res$all <- fgsea::fgsea(stats = gene.rnk,
+                          pathways = gene.sets,
+                          minSize = min.size,
+                          maxSize = max.size,
+                          eps = eps,
+                          nproc = nproc)
+  
+  res$collapsed <- fgsea::collapsePathways(fgseaRes = res$all[order(pval)],
+                                           pathways = gene.sets,
+                                           stats = gene.rnk)
+  res$collapsed <- res$all[pathway %in% res$collapsed$mainPathways]
+  
+  return(res)
+}

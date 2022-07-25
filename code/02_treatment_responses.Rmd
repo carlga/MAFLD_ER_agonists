@@ -25,7 +25,7 @@ knitr::opts_chunk$set(echo = T, message = F, warning = F)
 
 ```{r}
 # source and library import
-source("code/00_helper_functions.R")
+source('code/00_helper_functions.R')
 library(tidyverse)
 library(Mfuzz)
 library(ggalluvial)
@@ -55,10 +55,10 @@ colPals$clusters <- setNames(c('#A9D265', '#82506D', '#FA9F1C', '#676A6E'),
 
 ```{r}
 # consensus differentially expressed genes
-DEGs <- readRDS('data/bulkRNAseq_mmus_DEGs.rds')
+DEGs <- readRDS('results/bulkRNAseq_mmus_DEGs.rds')
 
 # RNAseq data
-RNAseq <- readRDS('data/bulkRNAseq_mmus_data_filt_norm.rds')
+RNAseq <- readRDS('results/bulkRNAseq_mmus_data_filt_norm.rds')
 
 ```
 
@@ -144,7 +144,7 @@ df <- DEG_clusters$genes %>%
                 condition=factor(condition, levels = c('CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT')))
 
 ggplot(df, aes(x=condition, y=expression, color=CLUSTER, group=geneID)) +
-  geom_line(data = subset(df, !grepl('centroid', GeneSymbol)), size = 1,  color=alpha("#AEAEAE", 0.15)) +
+  geom_line(data = subset(df, !grepl('centroid', GeneSymbol)), size = 1,  color=alpha('#AEAEAE', 0.15)) +
   geom_line(data = subset(df, grepl('centroid', GeneSymbol)), size = 1.2) +
   geom_point(data = subset(df, grepl('centroid', GeneSymbol)), shape=21, size=3, stroke=1.5, fill='white') +
   scale_color_manual(values = colPals$clusters) +
@@ -212,7 +212,7 @@ df <- lapply(comb, function(x) {
   mutate(cluster=factor(cluster, levels = rev(seq(1,4))))
 
 ggplot(df, aes(x=set, y=gene_overlap, fill=cluster)) +
-  geom_bar(position='fill', stat='identity', color="black", size=0.5) +
+  geom_bar(position='fill', stat='identity', color='black', size=0.5) +
   scale_y_continuous(labels=scales::percent_format()) +
   scale_fill_manual(values = colPals$clusters) +
   scale_x_discrete(limits = rev) +
@@ -245,18 +245,18 @@ ER_reverted <- lapply(list(DPN='DPNVsHFDm',DIP='DIPVsHFDm',E2='E2VsHFDm',PPT='PP
     dplyr::pull(ensembl_gene_id)
   
   df <- data.frame(matrix(nrow = 0, ncol = 3))
-  df <- rbind(df, c("treatment_up", "recovered_up", length(intersect(treatment_up, recovered_up))))
-  df <- rbind(df, c("treatment_up", "recovered_down", length(intersect(treatment_up, recovered_down))))
-  df <- rbind(df, c("treatment_up", "recovered_NA", length(setdiff(treatment_up, c(recovered_up, recovered_down)))))
-  df <- rbind(df, c("treatment_down", "recovered_up", length(intersect(treatment_down, recovered_up))))
-  df <- rbind(df, c("treatment_down", "recovered_down", length(intersect(treatment_down, recovered_down))))
-  df <- rbind(df, c("treatment_down", "recovered_NA", length(setdiff(treatment_down, c(recovered_up, recovered_down)))))
-  colnames(df) <- c(x, "CDmVsHFDm", "gene_overlap")
+  df <- rbind(df, c('treatment_up', 'recovered_up', length(intersect(treatment_up, recovered_up))))
+  df <- rbind(df, c('treatment_up', 'recovered_down', length(intersect(treatment_up, recovered_down))))
+  df <- rbind(df, c('treatment_up', 'recovered_NA', length(setdiff(treatment_up, c(recovered_up, recovered_down)))))
+  df <- rbind(df, c('treatment_down', 'recovered_up', length(intersect(treatment_down, recovered_up))))
+  df <- rbind(df, c('treatment_down', 'recovered_down', length(intersect(treatment_down, recovered_down))))
+  df <- rbind(df, c('treatment_down', 'recovered_NA', length(setdiff(treatment_down, c(recovered_up, recovered_down)))))
+  colnames(df) <- c(x, 'CDmVsHFDm', 'gene_overlap')
   df$gene_overlap <- as.numeric(df$gene_overlap)
   df$percent <- df$gene_overlap/sum(df$gene_overlap)*100
   
   df <- df %>% 
-    ggalluvial::to_lodes_form(key = "ax", value = "set", id = "overlap", axes = 1:2) %>% 
+    ggalluvial::to_lodes_form(key = 'ax', value = 'set', id = 'overlap', axes = 1:2) %>% 
     dplyr::mutate(ax=factor(ax, levels = c('CDmVsHFDm',x)),
                   set=factor(set, levels = c('treatment_down','treatment_up','recovered_NA','recovered_down','recovered_up')))
   
@@ -322,14 +322,14 @@ gobp_terms <- lapply(names(gobp_enrichment), function(x) {
   dplyr::bind_rows()
 
 sim_mat <- rrvgo::calculateSimMatrix(gobp_terms$goid %>% unique(),
-                                     orgdb="org.Mm.eg.db",
-                                     ont="BP",
-                                     method="Wang")
+                                     orgdb='org.Mm.eg.db',
+                                     ont='BP',
+                                     method='Wang')
 
 reduced_terms <- rrvgo::reduceSimMatrix(sim_mat,
                                         scores = NULL,
                                         threshold=0.9,
-                                        orgdb="org.Mm.eg.db")
+                                        orgdb='org.Mm.eg.db')
 
 gobp_enrichment_reduced <- rrvgo::scatterPlot(sim_mat, reduced_terms)$data %>% 
   tibble::rownames_to_column(var = 'goid') %>% 
@@ -338,14 +338,14 @@ gobp_enrichment_reduced <- rrvgo::scatterPlot(sim_mat, reduced_terms)$data %>%
 
 # get x and y coordinates in semantic space for parent terms
 sim_mat <- rrvgo::calculateSimMatrix(gobp_enrichment_reduced$parent %>% unique(),
-                                     orgdb="org.Mm.eg.db",
-                                     ont="BP",
-                                     method="Wang")
+                                     orgdb='org.Mm.eg.db',
+                                     ont='BP',
+                                     method='Wang')
 
 reduced_terms <- rrvgo::reduceSimMatrix(sim_mat,
                                         scores = NULL,
                                         threshold=0,
-                                        orgdb="org.Mm.eg.db")
+                                        orgdb='org.Mm.eg.db')
 
 df <- gobp_enrichment_reduced %>% 
   dplyr::group_by(set, parentTerm) %>% 
@@ -363,10 +363,10 @@ df <- gobp_enrichment_reduced %>%
 
 ggplot(data=df, aes(x=V1, y=V2)) + 
   scatterpie::geom_scatterpie(data=df, aes(x=V1, y=V2, r=size*0.005), 
-                              cols=c('reverted','DPN_DIP'), color="black") + 
+                              cols=c('reverted','DPN_DIP'), color='black') + 
   scatterpie::geom_scatterpie_legend(df$size*0.005, x=-0.45, y=-0.4, n=3, labeller=function(x) x*200) +
   ggrepel::geom_text_repel(aes(label = parentTerm), size = 3) +
-  scale_fill_manual(values = alpha(c("#6D7AA5", "#7DC7D1"), 0.8)) +
+  scale_fill_manual(values = alpha(c('#6D7AA5', '#7DC7D1'), 0.8)) +
   theme_bw()
 
 ```
@@ -407,9 +407,9 @@ df <- lapply(names(cl_gobp_enrichment), function(x) {
   dplyr::mutate(term=factor(term, levels = unique(term)))
 
 ggplot(df, aes(x=cluster, y=term, fill=cluster, size=significance)) +
-  geom_point(shape=21, color="black", stroke=0.5) +
-  scale_size_continuous(guide="legend", limits = c(0,15), range = c(1, 6), breaks = c(0,5,10,15)) +
-  scale_fill_manual(values = setNames(colPals$clusters, paste0('C',seq(1,4))), guide="legend") +
+  geom_point(shape=21, color='black', stroke=0.5) +
+  scale_size_continuous(guide='legend', limits = c(0,15), range = c(1, 6), breaks = c(0,5,10,15)) +
+  scale_fill_manual(values = setNames(colPals$clusters, paste0('C',seq(1,4))), guide='legend') +
   scale_y_discrete(limits = rev) +
   theme_bw() +
   guides(fill=guide_legend(order = 2), size=guide_legend(order = 1)) +
@@ -424,7 +424,7 @@ ggplot(df, aes(x=cluster, y=term, fill=cluster, size=significance)) +
 # Export 
 
 ```{r}
-saveRDS(DEG_sets, file = 'data/bulkRNAseq_mmus_DEG_sets.rds')
+saveRDS(DEG_sets, file = 'results/bulkRNAseq_mmus_DEG_sets.rds')
 
 ```
 

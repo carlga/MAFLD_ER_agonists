@@ -25,7 +25,7 @@ knitr::opts_chunk$set(echo = T, message = F, warning = F)
 
 ```{r}
 # source and library import
-source("code/00_helper_functions.R")
+source('code/00_helper_functions.R')
 library(tidyverse)
 library(DESeq2)
 
@@ -47,23 +47,23 @@ colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
 
 ```{r}
 # consensus differentially expressed genes
-DEGs <- readRDS('data/bulkRNAseq_mmus_DEGs.rds')
+DEGs <- readRDS('results/bulkRNAseq_mmus_DEGs.rds')
 
 # raw counts RNAseq
 raw_counts <- read.table(
   file = 'data/bulkRNAseq_mmus_rawcounts.tsv',
   stringsAsFactors = FALSE,
-  sep = "\t",
+  sep = '\t',
   header = TRUE) %>%
   dplyr::filter(geneID %in% DEGs$unfilt$CDfVsCDm$ensembl_gene_id) %>% 
-  tibble::column_to_rownames("geneID") %>% 
+  tibble::column_to_rownames('geneID') %>% 
   as.matrix() 
 
 # gene lengths
 gene_len <- read.table(
   file = 'data/bulkRNAseq_mmus_gene_lengths.tsv',
   stringsAsFactors = FALSE,
-  sep = "\t",
+  sep = '\t',
   header = TRUE) %>% 
   dplyr::filter(geneID %in% DEGs$unfilt$CDfVsCDm$ensembl_gene_id)
 
@@ -71,17 +71,17 @@ gene_len <- read.table(
 design_meta <- read.table(
   file = 'data/bulkRNAseq_mmus_design.tsv',
   stringsAsFactors = FALSE,
-  sep = "\t",
+  sep = '\t',
   header = TRUE)
 
 # ensembl gene annotation (Mus musculus)
 gene_ann <- read.table(
   file = 'data/ensembl_mmus_sep2019_annotation.tsv',
   stringsAsFactors = FALSE,
-  sep = "\t",
+  sep = '\t',
   header = TRUE,
   fill = FALSE,
-  quote = "") %>% 
+  quote = '') %>% 
   dplyr::filter(ensembl_gene_id %in% DEGs$unfilt$CDfVsCDm$ensembl_gene_id) %>% 
   dplyr::arrange(factor(ensembl_gene_id, levels = rownames(raw_counts)))
 
@@ -105,7 +105,7 @@ df <- data.frame(PC1 = pca_res$pcs$PC1,
                  condition = design_meta$condition)
 
 ggplot(df, aes(x=PC1, y=PC2, fill=condition),) +
-  geom_point(shape=21, size=5, stroke=0.5, color="black") +
+  geom_point(shape=21, size=5, stroke=0.5, color='black') +
   scale_fill_manual(values = alpha(colPals$conditions, 0.9)) +
   scale_x_continuous(expand = expansion(mult = c(.1, .1))) +
   scale_y_continuous(
@@ -128,8 +128,8 @@ df <- data.frame(comparison=factor(rep(names(DEGs$filt),2), levels=names(DEGs$fi
                  value=c(up, down*-1))
 
 ggplot(df, aes(x=comparison, y=value, fill=state, label=value)) +
-  geom_hline(yintercept = 0, linetype="solid", size=0.5) +
-  geom_bar(color="black", size=0.5, width=0.8, position="stack", stat="identity") +
+  geom_hline(yintercept = 0, linetype='solid', size=0.5) +
+  geom_bar(color='black', size=0.5, width=0.8, position='stack', stat='identity') +
   geom_text(size=6) +
   scale_fill_manual(values = colPals$UpDown) +
   scale_x_discrete(limits = rev) +
@@ -181,7 +181,7 @@ df <- RNAseq$tpm %>%
 ggplot(df, aes(x=comparison, y=value)) +
   geom_line(group=1, size=1.2) +
   geom_point(shape=21, size=3, stroke=1.5, color='black', fill='white') +
-  geom_hline(yintercept = 1, linetype="dashed", size=1.2, color="#EF2126") +
+  geom_hline(yintercept = 1, linetype='dashed', size=1.2, color='#EF2126') +
   scale_x_discrete(limits = rev) +
   scale_y_continuous(limits = c(1,3), breaks = c(1,2,3)) +
   coord_flip() +
@@ -201,7 +201,7 @@ ggplot(df, aes(x=comparison, y=value)) +
 # Export filtered and normalized RNAseq data
 
 ```{r}
-saveRDS(RNAseq, file = 'data/bulkRNAseq_mmus_data_filt_norm.rds')
+saveRDS(RNAseq, file = 'results/bulkRNAseq_mmus_data_filt_norm.rds')
 
 ```
 

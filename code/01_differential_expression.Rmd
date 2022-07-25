@@ -40,17 +40,17 @@ library(edgeR)
 raw_counts <- read.table(
   file = 'data/bulkRNAseq_mmus_rawcounts.tsv',
   stringsAsFactors = FALSE,
-  sep = "\t",
+  sep = '\t',
   header = TRUE) %>%
-  dplyr::select(-c("PPT_HFD_male_4")) %>%
-  tibble::column_to_rownames("geneID") %>%
+  dplyr::select(-PPT_HFD_male_4) %>%
+  tibble::column_to_rownames('geneID') %>%
   as.matrix() 
 
 # design RNAseq
 design_meta <- read.table(
   file = 'data/bulkRNAseq_mmus_design.tsv',
   stringsAsFactors = FALSE,
-  sep = "\t",
+  sep = '\t',
   header = TRUE) %>% 
   filter(sample != 'PPT_HFD_male_4')
 
@@ -58,10 +58,10 @@ design_meta <- read.table(
 gene_ann <- read.table(
   file = 'data/ensembl_mmus_sep2019_annotation.tsv',
   stringsAsFactors = FALSE,
-  sep = "\t",
+  sep = '\t',
   header = TRUE,
   fill = FALSE,
-  quote = "")
+  quote = '')
 
 ```
 
@@ -87,20 +87,20 @@ gene_ann_bg <- gene_ann %>%
 
 # comparisons
 DESeq2_DEGs <- list(
-  CDfVsCDm = results(ds_data, contrast = c("condition", "CDf", "CDm")),
-  HFDfVsHFDm = results(ds_data, contrast = c("condition", "HFDf", "HFDm")),
-  CDfVsHFDf = results(ds_data, contrast = c("condition", "CDf", "HFDf")),
-  CDmVsHFDm = results(ds_data, contrast = c("condition", "CDm", "HFDm")),
-  DPNVsHFDm = results(ds_data, contrast = c("condition", "DPN", "HFDm")),
-  DIPVsHFDm = results(ds_data, contrast = c("condition", "DIP", "HFDm")),
-  E2VsHFDm = results(ds_data, contrast = c("condition","E2", "HFDm")),
-  PPTVsHFDm = results(ds_data, contrast = c("condition","PPT", "HFDm"))
+  CDfVsCDm = results(ds_data, contrast = c('condition', 'CDf', 'CDm')),
+  HFDfVsHFDm = results(ds_data, contrast = c('condition', 'HFDf', 'HFDm')),
+  CDfVsHFDf = results(ds_data, contrast = c('condition', 'CDf', 'HFDf')),
+  CDmVsHFDm = results(ds_data, contrast = c('condition', 'CDm', 'HFDm')),
+  DPNVsHFDm = results(ds_data, contrast = c('condition', 'DPN', 'HFDm')),
+  DIPVsHFDm = results(ds_data, contrast = c('condition', 'DIP', 'HFDm')),
+  E2VsHFDm = results(ds_data, contrast = c('condition','E2', 'HFDm')),
+  PPTVsHFDm = results(ds_data, contrast = c('condition','PPT', 'HFDm'))
 )
 
 # add annotation to DEG lists
 DESeq2_DEGs <- lapply(DESeq2_DEGs, as.data.frame)
-DESeq2_DEGs <- lapply(DESeq2_DEGs, rownames_to_column, var = "ensembl_gene_id")
-DESeq2_DEGs <- lapply(DESeq2_DEGs, inner_join, y = gene_ann, by = "ensembl_gene_id")
+DESeq2_DEGs <- lapply(DESeq2_DEGs, rownames_to_column, var = 'ensembl_gene_id')
+DESeq2_DEGs <- lapply(DESeq2_DEGs, inner_join, y = gene_ann, by = 'ensembl_gene_id')
 
 ```
 
@@ -115,7 +115,7 @@ design <- model.matrix(~0 + groups)
 # filter on CPM
 dge <- dge[(rowSums(cpm(dge) > 1) >= 8), ]
 
-y_dge <- calcNormFactors(dge, method = "TMM")
+y_dge <- calcNormFactors(dge, method = 'TMM')
 y_dge <- estimateGLMCommonDisp(y_dge, design)
 y_dge <- estimateGLMTrendedDisp(y_dge, design)
 y_dge <- estimateGLMTagwiseDisp(y_dge, design)
@@ -136,9 +136,9 @@ edgeR_DEGs <- list(
 
 # calculate fdr and add annotation to DEG lists
 edgeR_DEGs <- lapply(edgeR_DEGs, function(x) as.data.frame(x$table))
-edgeR_DEGs <- lapply(edgeR_DEGs, rownames_to_column, var = "ensembl_gene_id")
-edgeR_DEGs <- lapply(edgeR_DEGs, function(x) mutate(x, padj = p.adjust(PValue, method = "fdr")))
-edgeR_DEGs <- lapply(edgeR_DEGs, inner_join, y = gene_ann, by = "ensembl_gene_id")
+edgeR_DEGs <- lapply(edgeR_DEGs, rownames_to_column, var = 'ensembl_gene_id')
+edgeR_DEGs <- lapply(edgeR_DEGs, function(x) mutate(x, padj = p.adjust(PValue, method = 'fdr')))
+edgeR_DEGs <- lapply(edgeR_DEGs, inner_join, y = gene_ann, by = 'ensembl_gene_id')
 
 ```
 
@@ -164,7 +164,7 @@ common_DEGs_filt <- mapply(function(a, b) filter(a, ensembl_gene_id %in% b$ensem
 DEGs <- list(unfilt = DESeq2_DEGs,
              filt = common_DEGs_filt)
 
-saveRDS(DEGs, file = 'data/bulkRNAseq_mmus_DEGs.rds')
+saveRDS(DEGs, file = 'results/bulkRNAseq_mmus_DEGs.rds')
 
 ```
 
