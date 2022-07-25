@@ -1,0 +1,435 @@
+---
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'BulkRNAseq - ER agonist treatment responses'
+author: 'Christian Sommerauer & Carlos Gallardo'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    theme: flatly
+    toc: yes
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-0):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F)
+
+```
+
+```{r}
+# source and library import
+source("code/00_helper_functions.R")
+library(tidyverse)
+library(Mfuzz)
+library(ggalluvial)
+library(patchwork)
+library(hypeR)
+library(rrvgo)
+library(scatterpie)
+library(ggrepel)
+
+```
+
+```{r}
+# color palettes
+colPals <- list()
+colPals$conditions <- setNames(c('#E98BB6', '#B02262', '#7F9AD7', '#2A2F72', '#7DC7D1', '#339ACD', '#356FB5', '#2B40AB'),
+                               c('CDf', 'HFDf', 'CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT'))
+colPals$RdBu <- rev(RColorBrewer::brewer.pal(n=11, name = 'RdBu'))
+colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
+                           c('up', 'down'))
+colPals$clusters <- setNames(c('#A9D265', '#82506D', '#FA9F1C', '#676A6E'),
+                             c('1', '2', '3', '4'))
+
+```
+
+
+# Load data
+
+```{r}
+# consensus differentially expressed genes
+DEGs <- readRDS('data/bulkRNAseq_mmus_DEGs.rds')
+
+# RNAseq data
+RNAseq <- readRDS('data/bulkRNAseq_mmus_data_filt_norm.rds')
+
+```
+
+
+# Clustering of expression profiles
+
+```{r}
+DEGs_union <- lapply(DEGs$filt[4:length(DEGs$filt)], function(x) x$ensembl_gene_id) %>% 
+  unlist() %>% 
+  unique()
+
+eset <- RNAseq$tpm %>% 
+  groupTransform(group.lbls = RNAseq$design_meta$condition, 
+                 FUN = function(x) apply(x,1,mean)) %>% 
+  dplyr::filter(row.names(.) %in% DEGs_union) %>% 
+  dplyr::select(CDm, HFDm, DPN, DIP, E2, PPT)
+
+# zscore data (mean=0, sd=1)
+eset <- new('ExpressionSet', exprs = as.matrix(eset)) %>% 
+  Mfuzz::standardise()
+
+# estimate fuzzifier parameter for clustering
+m_eset <- Mfuzz::mestimate(eset)
+
+# determine cluster number with minimum centroid distance
+Mfuzz::Dmin(eset, m = m_eset, crange = seq(2,20,1), repeats = 5)
+
+```
+
+```{r}
+set.seed(2)
+
+# generate mfuzz clusters (n=4)
+clusters <- mfuzz(eset, c = 4, m = m_eset)
+
+# check correlation of cluster centroids
+cor(t(clusters[[1]]))
+
+```
+
+```{r}
+# get cluster membership values of genes
+cluster_memberships <- acore(eset, cl = clusters, min.acore = 0.0)
+
+# assign to cluster with top membership value
+cluster_memberships <- do.call(rbind, 
+                               lapply(seq_along(cluster_memberships), 
+                                      function(x) {data.frame(CLUSTER=x, 
+                                                              cluster_memberships[[x]])})) %>% 
+  dplyr::mutate(CLUSTER=dplyr::recode(CLUSTER, !!!setNames(c(4,3,2,1), seq(1,4,1))))
+
+# check number of genes per cluster
+table(cluster_memberships$CLUSTER)
+
+```
+
+```{r, fig.width=12, fig.height=3}
+DEG_clusters <- list()
+
+# extract gene profiles and cluster assignments
+DEG_clusters$genes <- as.data.frame(exprs(eset)) %>% 
+  tibble::rownames_to_column(var = 'geneID') %>% 
+  tibble::add_column(GeneSymbol = .$geneID, .after = 'geneID') %>% 
+  dplyr::mutate(GeneSymbol=dplyr::recode(GeneSymbol, 
+                                         !!!setNames(RNAseq$annotation$external_gene_name, 
+                                                     RNAseq$annotation$geneID))) %>% 
+  merge(cluster_memberships, by.x = 'geneID', by.y = 'NAME', sort = F)
+
+# extract cluster centroid profiles
+DEG_clusters$centroids <- as.data.frame(clusters$centers) %>% 
+  tibble::add_column(geneID = paste0('centroid_', c(4,3,2,1)), .before = 'CDm') %>% 
+  tibble::add_column(GeneSymbol = paste0('centroid_', c(4,3,2,1)), .before = 'CDm') %>%
+  dplyr::mutate(CLUSTER=c(4,3,2,1),
+                MEM.SHIP=1) %>% 
+  arrange(CLUSTER)
+
+df <- DEG_clusters$genes %>% 
+  dplyr::bind_rows(DEG_clusters$centroids) %>% 
+  tidyr::pivot_longer(cols = c('CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT'), 
+                      names_to = 'condition', 
+                      values_to = 'expression') %>% 
+  dplyr::mutate(CLUSTER=factor(CLUSTER, levels = 1:4),
+                condition=factor(condition, levels = c('CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT')))
+
+ggplot(df, aes(x=condition, y=expression, color=CLUSTER, group=geneID)) +
+  geom_line(data = subset(df, !grepl('centroid', GeneSymbol)), size = 1,  color=alpha("#AEAEAE", 0.15)) +
+  geom_line(data = subset(df, grepl('centroid', GeneSymbol)), size = 1.2) +
+  geom_point(data = subset(df, grepl('centroid', GeneSymbol)), shape=21, size=3, stroke=1.5, fill='white') +
+  scale_color_manual(values = colPals$clusters) +
+  facet_wrap(~CLUSTER, nrow = 1) +
+  theme_bw() +
+  theme(strip.background = element_blank())
+
+```
+
+
+# Analysis of relevant DEG sets
+
+```{r}
+# extract relevant intersections of DEGs sets between conditions
+DEG_sets <- list()
+
+DEG_sets$gene_id$non_reverted <- dplyr::setdiff(DEGs$filt$CDmVsHFDm$ensembl_gene_id, 
+                                                c(DEGs$filt$DPNVsHFDm$ensembl_gene_id, 
+                                                  DEGs$filt$DIPVsHFDm$ensembl_gene_id, 
+                                                  DEGs$filt$E2VsHFDm$ensembl_gene_id,
+                                                  DEGs$filt$PPTVsHFDm$ensembl_gene_id))
+
+DEG_sets$gene_id$reverted <- dplyr::intersect(DEGs$filt$CDmVsHFDm$ensembl_gene_id, 
+                                              c(DEGs$filt$DPNVsHFDm$ensembl_gene_id, 
+                                                DEGs$filt$DIPVsHFDm$ensembl_gene_id, 
+                                                DEGs$filt$E2VsHFDm$ensembl_gene_id, 
+                                                DEGs$filt$PPTVsHFDm$ensembl_gene_id))
+
+DEG_sets$gene_id$DPN_DIP <- dplyr::setdiff(unique(c(DEGs$filt$DPNVsHFDm$ensembl_gene_id, 
+                                                    DEGs$filt$DIPVsHFDm$ensembl_gene_id)), 
+                                           c(DEGs$filt$CDmVsHFDm$ensembl_gene_id, 
+                                             DEGs$filt$E2VsHFDm$ensembl_gene_id, 
+                                             DEGs$filt$PPTVsHFDm$ensembl_gene_id))
+
+DEG_sets$gene_id$E2_PPT <- dplyr::setdiff(c(DEGs$filt$E2VsHFDm$ensembl_gene_id, 
+                                            DEGs$filt$PPTVsHFDm$ensembl_gene_id), 
+                                          c(DEGs$filt$CDmVsHFDm$ensembl_gene_id, 
+                                            DEGs$filt$DPNVsHFDm$ensembl_gene_id, 
+                                            DEGs$filt$DIPVsHFDm$ensembl_gene_id)) %>% 
+  unique()
+
+# get gene symbols
+DEG_sets$gene_symbols <- lapply(DEG_sets$gene_id, function(x) {
+  dplyr::recode(x, 
+                !!!setNames(RNAseq$annotation$external_gene_name,
+                            RNAseq$annotation$geneID)) %>% 
+    unique()
+})
+
+# count genes per expression cluster for each set
+comb <- expand.grid(names(DEG_sets$gene_id), seq(1,4))
+comb <- split(comb, 1:nrow(comb))
+
+df <- lapply(comb, function(x) {
+  genes.x <- DEG_sets$gene_id[[x[[1]]]]
+  genes.y <- DEG_clusters$genes %>% 
+    dplyr::filter(CLUSTER==x[[2]]) %>% 
+    dplyr::pull(geneID)
+  
+  data.frame(set=x[[1]],
+             cluster=x[[2]],
+             gene_overlap=dplyr::intersect(genes.x, genes.y) %>% length())
+}) %>% 
+  dplyr::bind_rows() %>% 
+  mutate(cluster=factor(cluster, levels = rev(seq(1,4))))
+
+ggplot(df, aes(x=set, y=gene_overlap, fill=cluster)) +
+  geom_bar(position='fill', stat='identity', color="black", size=0.5) +
+  scale_y_continuous(labels=scales::percent_format()) +
+  scale_fill_manual(values = colPals$clusters) +
+  scale_x_discrete(limits = rev) +
+  coord_flip() +
+  theme_bw()
+
+```
+
+
+# Recovery of gene expression by different ER agonist treatments
+
+```{r, fig.width=12, fig.height=6}
+ER_reverted <- lapply(list(DPN='DPNVsHFDm',DIP='DIPVsHFDm',E2='E2VsHFDm',PPT='PPTVsHFDm'), function(x) {
+  
+  treatment_up <- DEGs$filt[[x]] %>% 
+    dplyr::filter(log2FoldChange>0) %>% 
+    dplyr::pull(ensembl_gene_id)
+  treatment_down <- DEGs$filt[[x]] %>% 
+    dplyr::filter(log2FoldChange<0) %>% 
+    dplyr::pull(ensembl_gene_id)
+  recovered_up <- DEGs$filt$CDmVsHFDm %>% 
+    dplyr::filter(ensembl_gene_id %in% DEG_sets$gene_id$reverted 
+                  & log2FoldChange>0 
+                  & ensembl_gene_id %in% DEGs$filt[[x]]$ensembl_gene_id) %>% 
+    dplyr::pull(ensembl_gene_id)
+  recovered_down <- DEGs$filt$CDmVsHFDm %>% 
+    dplyr::filter(ensembl_gene_id %in% DEG_sets$gene_id$reverted 
+                  & log2FoldChange<0 
+                  & ensembl_gene_id %in% DEGs$filt[[x]]$ensembl_gene_id) %>% 
+    dplyr::pull(ensembl_gene_id)
+  
+  df <- data.frame(matrix(nrow = 0, ncol = 3))
+  df <- rbind(df, c("treatment_up", "recovered_up", length(intersect(treatment_up, recovered_up))))
+  df <- rbind(df, c("treatment_up", "recovered_down", length(intersect(treatment_up, recovered_down))))
+  df <- rbind(df, c("treatment_up", "recovered_NA", length(setdiff(treatment_up, c(recovered_up, recovered_down)))))
+  df <- rbind(df, c("treatment_down", "recovered_up", length(intersect(treatment_down, recovered_up))))
+  df <- rbind(df, c("treatment_down", "recovered_down", length(intersect(treatment_down, recovered_down))))
+  df <- rbind(df, c("treatment_down", "recovered_NA", length(setdiff(treatment_down, c(recovered_up, recovered_down)))))
+  colnames(df) <- c(x, "CDmVsHFDm", "gene_overlap")
+  df$gene_overlap <- as.numeric(df$gene_overlap)
+  df$percent <- df$gene_overlap/sum(df$gene_overlap)*100
+  
+  df <- df %>% 
+    ggalluvial::to_lodes_form(key = "ax", value = "set", id = "overlap", axes = 1:2) %>% 
+    dplyr::mutate(ax=factor(ax, levels = c('CDmVsHFDm',x)),
+                  set=factor(set, levels = c('treatment_down','treatment_up','recovered_NA','recovered_down','recovered_up')))
+  
+  df
+})
+
+p <- lapply(ER_reverted, function(df) {
+  
+  ggplot(df, aes(x=ax, y = percent, stratum=set, alluvium=overlap, fill=set)) +
+  ggalluvial::geom_alluvium(width = 1/12) +
+  ggalluvial::geom_stratum(width = 1.5/12) +
+  scale_x_discrete(expand = c(.05, .05)) +
+  scale_fill_manual(values = c(treatment_up='#B2182B',
+                               treatment_down='#2166AC',
+                               recovered_up='#B2182B',
+                               recovered_down='#2166AC',
+                               recovered_NA='#C1C1C1')) +
+  coord_flip() +
+  theme_bw()
+  
+})
+
+patchwork::wrap_plots(p, nrow=2, ncol=2, byrow=T, guides = 'collect')
+
+```
+
+
+# Gene ontology analysis
+
+```{r}
+# load MGI GO biological process annotation
+mgi_gobp <- readGMT('data/mgi_jul2021_gobp_annotation.gmt')
+
+# perform overrepresentation analysis for gene sets changed by HFD and treatments
+gobp_enrichment <- hypeR::hypeR(signature = DEG_sets$gene_symbols, 
+                                genesets = mgi_gobp$genesets, 
+                                test = 'hypergeometric', 
+                                background = RNAseq$annotation$external_gene_name)
+
+hypeR::hyp_dots(gobp_enrichment, val='fdr', pval=0.05, fdr=0.05)
+
+```
+
+```{r}
+# append descriptions and filter
+gobp_enrichment <- lapply(gobp_enrichment$data, function(x) {
+  x$data %>% 
+    dplyr::mutate(description=dplyr::recode(label, 
+                                            !!!setNames(mgi_gobp$geneset.descriptions, 
+                                                        mgi_gobp$geneset.names))) %>% 
+    dplyr::filter(fdr<0.05)
+})
+
+# collapse GO terms based on similarity
+set.seed(5)
+
+gobp_terms <- lapply(names(gobp_enrichment), function(x) {
+  gobp_enrichment[[x]] %>% 
+    dplyr::mutate(set=x) %>% 
+    dplyr::rename(goid=label) %>% 
+    dplyr::select(set, goid)
+}) %>% 
+  dplyr::bind_rows()
+
+sim_mat <- rrvgo::calculateSimMatrix(gobp_terms$goid %>% unique(),
+                                     orgdb="org.Mm.eg.db",
+                                     ont="BP",
+                                     method="Wang")
+
+reduced_terms <- rrvgo::reduceSimMatrix(sim_mat,
+                                        scores = NULL,
+                                        threshold=0.9,
+                                        orgdb="org.Mm.eg.db")
+
+gobp_enrichment_reduced <- rrvgo::scatterPlot(sim_mat, reduced_terms)$data %>% 
+  tibble::rownames_to_column(var = 'goid') %>% 
+  dplyr::right_join(gobp_terms, by = 'goid') %>% 
+  dplyr::mutate(term=make.unique(term))
+
+# get x and y coordinates in semantic space for parent terms
+sim_mat <- rrvgo::calculateSimMatrix(gobp_enrichment_reduced$parent %>% unique(),
+                                     orgdb="org.Mm.eg.db",
+                                     ont="BP",
+                                     method="Wang")
+
+reduced_terms <- rrvgo::reduceSimMatrix(sim_mat,
+                                        scores = NULL,
+                                        threshold=0,
+                                        orgdb="org.Mm.eg.db")
+
+df <- gobp_enrichment_reduced %>% 
+  dplyr::group_by(set, parentTerm) %>% 
+  dplyr::summarise(set=set,
+                   parentTerm=parentTerm,
+                   n=n()) %>% 
+  unique() %>% 
+  dplyr::left_join(rrvgo::scatterPlot(sim_mat, reduced_terms)$data %>% 
+                     dplyr::select(parentTerm, V1, V2),
+                   by = 'parentTerm') %>% 
+  tidyr::pivot_wider(names_from = 'set',
+                     values_from = 'n',
+                     values_fill = 0) %>%
+  dplyr::mutate(size=reverted+DPN_DIP)
+
+ggplot(data=df, aes(x=V1, y=V2)) + 
+  scatterpie::geom_scatterpie(data=df, aes(x=V1, y=V2, r=size*0.005), 
+                              cols=c('reverted','DPN_DIP'), color="black") + 
+  scatterpie::geom_scatterpie_legend(df$size*0.005, x=-0.45, y=-0.4, n=3, labeller=function(x) x*200) +
+  ggrepel::geom_text_repel(aes(label = parentTerm), size = 3) +
+  scale_fill_manual(values = alpha(c("#6D7AA5", "#7DC7D1"), 0.8)) +
+  theme_bw()
+
+```
+
+```{r, fig.width=8, fig.height=12}
+# enrichment of GO terms across DEG clusters
+cl_sets <- lapply(setNames(seq(1,4), c('C1','C2','C3','C4')), function(x) {
+  DEG_clusters$genes %>% 
+    dplyr::filter(CLUSTER==x) %>% 
+    dplyr::pull(GeneSymbol)
+})
+
+# get enrichments
+cl_gobp_enrichment <- hypeR::hypeR(signature = cl_sets, 
+                                   genesets = mgi_gobp$genesets, 
+                                   test = 'hypergeometric', 
+                                   background = RNAseq$annotation$external_gene_name)
+
+cl_gobp_enrichment <- lapply(cl_gobp_enrichment$data, function(x) {
+  x$data %>% 
+    dplyr::mutate(description=dplyr::recode(label, 
+                                            !!!setNames(mgi_gobp$geneset.descriptions, 
+                                                        mgi_gobp$geneset.names)))
+})
+
+df <- lapply(names(cl_gobp_enrichment), function(x) {
+  cl_gobp_enrichment[[x]] %>% 
+    dplyr::mutate(cluster=x) %>% 
+    dplyr::rename(goid=label)
+}) %>% 
+  dplyr::bind_rows() %>% 
+  dplyr::inner_join(gobp_enrichment_reduced %>% 
+                      dplyr::select(set, goid, term, parentTerm),
+                    by = 'goid') %>% 
+  dplyr::mutate(significance=-log10(pval)) %>% 
+  dplyr::arrange(parentTerm) %>% 
+  dplyr::arrange(factor(set, levels = c('reverted','DPN_DIP'))) %>% 
+  dplyr::mutate(term=factor(term, levels = unique(term)))
+
+ggplot(df, aes(x=cluster, y=term, fill=cluster, size=significance)) +
+  geom_point(shape=21, color="black", stroke=0.5) +
+  scale_size_continuous(guide="legend", limits = c(0,15), range = c(1, 6), breaks = c(0,5,10,15)) +
+  scale_fill_manual(values = setNames(colPals$clusters, paste0('C',seq(1,4))), guide="legend") +
+  scale_y_discrete(limits = rev) +
+  theme_bw() +
+  guides(fill=guide_legend(order = 2), size=guide_legend(order = 1)) +
+  theme(
+    legend.position = 'top',
+    legend.justification = 'left'
+  )
+
+```
+
+
+# Export 
+
+```{r}
+saveRDS(DEG_sets, file = 'data/bulkRNAseq_mmus_DEG_sets.rds')
+
+```
+
+
+```{r}
+sessionInfo()
+
+```
