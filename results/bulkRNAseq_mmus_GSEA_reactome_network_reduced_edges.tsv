@@ -1,0 +1,32 @@
+source	target	interaction	correlation	pval	sign	weight	genes	size
+Kinase signaling	Cell cycle	correlation	-0.920268096219414	0.0267004549835338	NEG	0.920268096219414	Chek1,Src,Ubb,Ubc,Lyn,Ppp2cb,Rps27a,Uba52,Ppp2ca,Ptk6,Ppp2r1a,Ppp2r1b,Ppp2r5d,Jak2,Skp1a,Cul1	16
+PI3KAKT regulation	Cell cycle	correlation	-0.933411029775021	0.0204197874814941	NEG	0.933411029775021	Src,Ppp2cb,Ppp2ca,Ppp2r5c,Ppp2r5b,Ppp2r1a,Ppp2r1b,Ppp2r5e,Ppp2r5a,Ppp2r5d	10
+Biological oxidations	DNA repair	correlation	0.951308225224549	0.0128032319470774	POS	0.951308225224549		0
+GPCR signaling	Lipid metabolism	correlation	-0.944573651630571	0.0155333184334858	NEG	0.944573651630571	Ubb,Ubc,Abcd1,Abcd3,Rps27a,Uba52,Abcd2,Slco1a5,Slco1b2,Abcc3,Abcc1,Hmox1,Slc44a5,Slc44a1,Slc44a2,Slc44a4,Slc44a3,Pex19,Alb,Akr1c19,Pik3r2,Pomc,Cga,App,Pik3r1,Akr1b8,Akr1c6,Psap,Pik3r3,Awat2,Akr1c18,Akr1c13,Akr1c20,Akr1c14,Pik3cg,Akr1c12,Mgll,Pik3ca,Pik3r6,Pik3r5,Pla2g4a,Prkaa2,Prkag2,Agpat1,Fasn,Acaca,Acly,Prkab2,Acsl3,Acsl4	50
+Extracellular matrix	Mitochondrial respiration	correlation	-0.926699172804493	0.0235593630211526	NEG	0.926699172804493	Bsg	1
+Transcription	Mitochondrial respiration	correlation	0.905650836370536	0.0342923480935453	POS	0.905650836370536		0
+Amino acid metabolism	Mitochondrial respiration	correlation	0.977972053244858	0.00391160211496908	POS	0.977972053244858	Dld,Pdha1,Pdha2,Pdhx,Dlat,Pdhb,Ndufab1	7
+IGF regulation	Mitochondrial respiration	correlation	-0.981452041995202	0.00302389024565324	NEG	0.981452041995202		0
+Translation	Chromatin organization	correlation	-0.923439706924986	0.0251355219503817	NEG	0.923439706924986	Rps2	1
+Nucleotide metabolism	Chromatin organization	correlation	-0.910849761077781	0.0315226802610084	NEG	0.910849761077781		0
+Kinase signaling	Chromatin organization	correlation	0.911043167550532	0.0314210949432409	POS	0.911043167550532	Nfkb1,Atf2	2
+PI3KAKT regulation	Chromatin organization	correlation	0.937813753775791	0.0184409080470206	POS	0.937813753775791		0
+Carbohydrate metabolism	GPCR signaling	correlation	0.972610105633991	0.00541909819909003	POS	0.972610105633991	Calm1,Calm2,Calm3,Slc9a1,Slc2a1,Slc26a1,Slc26a2,Slc25a10,Agrn,Sdc4,Sdc1,Sdc2,Gpc4,Hspg2,Sdc3,Gpc2,Gpc5,Gpc3,Gpc1,Gpc6	20
+Phagocytosis	Extracellular matrix	correlation	0.907347450266206	0.0333803002910341	POS	0.907347450266206		0
+Amino acid metabolism	Extracellular matrix	correlation	-0.90639653823772	0.0338905125185499	NEG	0.90639653823772		0
+Carbohydrate metabolism	Extracellular matrix	correlation	0.975289477347457	0.00464558525947464	POS	0.975289477347457	Cd44,Sdc4,Sdc1,Sdc2,Hspg2,Sdc3,Bgn,Dcn,Ncan,Bcan,Lum,Acan	12
+Hemostasis	Phagocytosis	correlation	0.960287134487315	0.00944336110006778	POS	0.960287134487315	Src,Ptk2,Crk,Pik3r2,Lyn,Pik3r1,Fyn,Pik3ca,Yes1,Grb2,Pik3cb,Plcg1,Fgr,Vav1,Syk,Cdc42,Rac1,Vav2,Vav3,Plcg2,Mapk1,Mapk3,Dock1	23
+Nucleotide metabolism	Phagocytosis	correlation	-0.90492908711009	0.0346827165544369	NEG	0.90492908711009		0
+RNA metabolism	Complement cascade	correlation	-0.934889176765748	0.0197481298687414	NEG	0.934889176765748		0
+Development	Hemostasis	correlation	0.909139823294612	0.0324253700877089	POS	0.909139823294612	Kalrn,Sptbn4,Rasa1,Gfra2,Pik3r2,Gfra3,Itgb3,Src,Spta1,Itga5,Ncam1,Ptpra,Lyn,Pik3r1,Map2k1,Ptk2,Ptpn11,Grin1,Ret,Fyn,Pik3ca,Itgav,Gdnf,Cdc42,Rhob,Rac1,Mapk1,Erbb2,Irs2,Nrtn,Gfra1,Grin2b,Yes1,Grb2,Vav2,Pak3,Sos1,Sptbn1,Mapk3,Pik3r3,Sptbn2,Pik3cb,Dock1,Pak2,Gfra4,Rhoa,Vav3,Artn,Itgb1,Kras,Hras,Dok2,Prkca,Shc1,Grb7,Shc3,Plcg1,Frs2,Mapk14,Itga2b,Tln1,Ubb,Ubc,Rps27a,Uba52,Map2k2,Gpc1,Dlg4,Foxo3	69
+Nucleotide metabolism	Hemostasis	correlation	-0.910079419121662	0.0319283384178474	NEG	0.910079419121662		0
+Translation	Transport	correlation	-0.969351339286929	0.00641127495527624	NEG	0.969351339286929	Rps27a,Uba52,Csnk1d	3
+Amino acid metabolism	Transcription	correlation	0.967878135929963	0.00687751092650879	POS	0.967878135929963		0
+IGF regulation	Transcription	correlation	-0.968665906450176	0.00662685918484321	NEG	0.968665906450176		0
+Vitamin metabolism	Development	correlation	-0.944235317500742	0.0156749528960117	NEG	0.944235317500742	Hsp90aa1,Gpc1	2
+Kinase signaling	Development	correlation	0.981462295148025	0.00302138789643882	POS	0.981462295148025	Col9a3,Col6a5,Rasa1,Pcsk6,Pik3r2,Mapk12,Itgb3,Nck2,Col4a1,Src,Hsp90aa1,Col4a2,Itgb1,Ubb,Ubc,Fes,Ap2a1,Ap2a2,Prkca,Furin,Lyn,Ctnna1,Pik3r1,Kras,Ptk2,Ptpn11,Fyn,Mmp9,Pik3ca,Itgav,Mapk14,Cdc42,Ap2s1,Rps27a,Uba52,Rac1,Mapk1,Rock1,Rock2,Erbb2,Irs2,Ap2m1,Shc1,Ctnnb1,Jup,Col6a2,Grb7,Yes1,Col6a1,Col9a1,Grb2,Grb10,Vav2,Pak3,Shc3,Hras,Plcg1,Sos1,Sh3gl2,Mapk3,Col4a5,Pik3r3,Cltc,Pik3cb,Dock1,Rps6ka5,Frs2,Col6a6,Pak2,Col23a1,Sh3kbp1,Nck1,Arhgef7,Rhoa,Gab1,Col4a4,Col4a3,Vav3,Mapk11,Mapk7,Mapk13,Mapk8	82
+PI3KAKT regulation	Development	correlation	0.94310248924413	0.016152215603829	POS	0.94310248924413	Pik3r2,Pik3cd,Src,Pik3r1,Ptpn11,Fyn,Pik3ca,Rac1,Erbb2,Grb2,Pik3r3,Pik3cb,Frs2,Gab1,Pip5k1c,Irs2,Mapk1,Mapk3	18
+IGF regulation	Amino acid metabolism	correlation	-0.995523034235717	0.000359350004322317	NEG	0.995523034235717		0
+PI3KAKT regulation	Nucleotide metabolism	correlation	-0.900149537737132	0.0373031105850229	NEG	0.900149537737132		0
+Kinase signaling	Vitamin metabolism	correlation	-0.921032832722109	0.0263203374996325	NEG	0.921032832722109	Hsp90aa1,Calm1,Calm2,Calm3,Akt1,Nos3	6
+PI3KAKT regulation	Kinase signaling	correlation	0.97454833278801	0.00485560343033506	POS	0.97454833278801	Pik3r2,Nrg3,Fgf15,Fgf18,Egf,Ins1,Ins2,Src,Kit,Lck,Fgf4,Insr,Fgf2,Fgfr1,Esr1,Pdgfa,Fgf6,Fgfr2,Pik3r1,Pdgfra,Vav1,Pdgfb,Akt1,Areg,Ptpn11,Fgf8,Fyn,Pik3ca,Tgfa,Fgf9,Fgf1,Ppp2cb,Rac1,Fgf17,Ppp2ca,Erbb2,Egfr,Fgfr4,Btc,Hbegf,Grb2,Akt2,Ereg,Pik3r3,Nrg1,Ppp2r1a,Ppp2r1b,Pik3cb,Frs2,Epgn,Fgf23,Fgf16,Fgf20,Gab1,Nrg4,Akt3,Kl,Fgf10,Pdgfrb,Fgf5,Kitl,Irs1,Fgf7,Irs2,Hgf,Erbb3,Erbb4,Klb,Fgf22,Ppp2r5d,Them4,Trib3,Mapk1,Mapk3	74

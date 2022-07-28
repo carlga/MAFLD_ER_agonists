@@ -1,0 +1,250 @@
+---
+title: "Hepatoprotective effects of systemic ER activation"
+author: "Christian Sommerauer & Carlos Gallardo"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    theme: flatly
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+    highlight: tango
+  pdf_document:
+    toc: yes
+subtitle: BulkRNAseq - Pathway analysis
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-0):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, cache = T)
+
+```
+
+```{r}
+# source and library import
+source('code/00_helper_functions.R')
+library(tidyverse)
+library(fgsea)
+
+```
+
+```{r}
+# color palettes
+colPals <- list()
+colPals$conditions <- setNames(c('#E98BB6', '#B02262', '#7F9AD7', '#2A2F72', '#7DC7D1', '#339ACD', '#356FB5', '#2B40AB'),
+                               c('CDf', 'HFDf', 'CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT'))
+colPals$RdBu <- rev(RColorBrewer::brewer.pal(n=11, name = 'RdBu'))
+colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
+                           c('up', 'down'))
+colPals$clusters <- setNames(c('#A9D265', '#82506D', '#FA9F1C', '#676A6E'),
+                             c('1', '2', '3', '4'))
+
+```
+
+
+# Load data
+
+```{r}
+# consensus differentially expressed genes
+DEGs <- readRDS('results/bulkRNAseq_mmus_DEGs.rds')
+
+# treatment response sets
+DEG_sets <- readRDS('results/bulkRNAseq_mmus_DEG_sets.rds')
+
+# RNAseq data
+RNAseq <- readRDS('results/bulkRNAseq_mmus_data_filt_norm.rds')
+
+# mmus reactome gene sets from Zhang et al 2020
+gene_sets <- list()
+gene_sets$reactome <- readGMT('data/reactome_mmus_Zhang2020_annotation.gmt')
+
+```
+
+
+# Gene set enrichment analysis (GSEA)
+
+```{r}
+# rank genes by signed -log10 P value
+gsea_genes_rnk <- lapply(DEGs$unfilt[c('CDmVsHFDm','DPNVsHFDm','DIPVsHFDm','E2VsHFDm','PPTVsHFDm')], function(x) {
+  x %>% 
+    dplyr::mutate(neg_log10Pval = -log10(pvalue)*sign(log2FoldChange)) %>% 
+    dplyr::mutate(neg_log10Pval = ifelse(is.na(neg_log10Pval), 0, neg_log10Pval)) %>%
+    dplyr::arrange(dplyr::desc(neg_log10Pval))
+})
+
+# run GSEA
+gsea_res <- lapply(gsea_genes_rnk, function(x) {
+  runGSEA(gene.rnk = setNames(x$neg_log10Pval,
+                              x$external_gene_name),
+          gene.sets = gene_sets$reactome$genesets,
+          min.size = 10,
+          max.size = 500,
+          nproc = 3)
+})
+
+```
+
+
+# Build network of perturbed pathways
+
+```{r}
+# generate node and edge tables
+gsea_net <- buildGSEANetwork(gsea_res, gene_sets$reactome$genesets)
+
+# export node and edge tables for Cytoscape input
+# filter for nodes connected by at least 1 edge
+nodes <- gsea_net$nodes %>% 
+  dplyr::filter(id %in% c(gsea_net$edges$source, gsea_net$edges$target))
+
+# write.table(nodes,
+#             file = 'results/bulkRNAseq_mmus_GSEA_reactome_network_nodes.tsv',
+#             sep = '\t',
+#             col.names = TRUE,
+#             row.names = FALSE,
+#             quote = FALSE)
+# 
+# write.table(gsea_net$edges,
+#             file = 'results/bulkRNAseq_mmus_GSEA_reactome_network_edges.tsv',
+#             sep = '\t',
+#             col.names = TRUE,
+#             row.names = FALSE,
+#             quote = FALSE)
+
+```
+
+
+# Collapse network to pathway clusters
+
+```{r}
+# load cluster assignments from Cytoscape
+gsea_net_clusters <- read.table(
+  file = 'results/bulkRNAseq_mmus_GSEA_reactome_network_clusters.tsv',
+  stringsAsFactors = FALSE,
+  sep = '\t',
+  header = TRUE,
+  quote = '')
+
+# generate reduced network
+# collapse clusters and correlate according to NES profiles
+gsea_net_reduced <- list()
+
+gsea_net_reduced$nodes <- gsea_net_clusters %>% 
+  dplyr::inner_join(nodes, by = 'id') %>% 
+  dplyr::group_by(cl_label) %>% 
+  dplyr::summarise(cluster = glayCluster,
+                   id = cl_label,
+                   n = dplyr::n(),
+                   CDmVsHFDm_NES = mean(CDmVsHFDm_NES),
+                   DPNVsHFDm_NES = mean(DPNVsHFDm_NES),
+                   DIPVsHFDm_NES = mean(DIPVsHFDm_NES),
+                   E2VsHFDm_NES = mean(E2VsHFDm_NES),
+                   PPTVsHFDm_NES = mean(PPTVsHFDm_NES),
+                   genes = paste(genes, collapse = ',')) %>% 
+  unique() %>% 
+  dplyr::mutate(genes = paste(unique(unlist(strsplit(genes, ','))), collapse = ',')) %>% 
+  dplyr::mutate(size = length(unlist(strsplit(genes, ',')))) %>% 
+  dplyr::ungroup(cl_label) %>% 
+  dplyr::select(-cl_label) %>% 
+  dplyr::arrange(cluster)
+
+
+comb <- expand.grid(gsea_net_reduced$nodes$id, gsea_net_reduced$nodes$id)
+comb <- split(comb, 1:nrow(comb))
+
+gsea_net_reduced$edges <- lapply(comb, function(x) {
+  names.NES <- colnames(gsea_net_reduced$nodes)[grep('NES', colnames(gsea_net_reduced$nodes))]
+  scores.x <- unlist(gsea_net_reduced$nodes[gsea_net_reduced$nodes$id == x[[1]], names.NES])
+  scores.y <- unlist(gsea_net_reduced$nodes[gsea_net_reduced$nodes$id == x[[2]], names.NES])
+  cor.res <- cor.test(scores.x, scores.y)
+  
+  genes.x <- unlist(strsplit(unlist(gsea_net_reduced$nodes[gsea_net_reduced$nodes$id == x[[1]], 'genes']), ','))
+  genes.y <- unlist(strsplit(unlist(gsea_net_reduced$nodes[gsea_net_reduced$nodes$id == x[[2]], 'genes']), ','))
+  
+  data.frame(source = x[[1]],
+             target = x[[2]],
+             interaction = 'correlation',
+             correlation = cor.res$estimate,
+             pval = cor.res$p.value,
+             sign = ifelse(cor.res$estimate>0, 'POS', 'NEG'),
+             weight = abs(cor.res$estimate),
+             genes = paste(dplyr::intersect(genes.x, genes.y), collapse = ','),
+             size = length(dplyr::intersect(genes.x, genes.y)))
+}) %>% 
+  dplyr::bind_rows() %>% 
+  dplyr::filter(!duplicated(select(., -c('source', 'target', 'genes')))) %>% 
+  dplyr::filter(source != target & weight>0.9) # filter edges to cor >0.9 or <-0.9
+
+# write.table(gsea_net_reduced$nodes,
+#             file = 'results/bulkRNAseq_mmus_GSEA_reactome_network_reduced_nodes.tsv',
+#             sep = '\t',
+#             col.names = TRUE,
+#             row.names = FALSE,
+#             quote = FALSE)
+# 
+# write.table(gsea_net_reduced$edges,
+#             file = 'results/bulkRNAseq_mmus_GSEA_reactome_network_reduced_edges.tsv',
+#             sep = '\t',
+#             col.names = TRUE,
+#             row.names = FALSE,
+#             quote = FALSE)
+
+```
+
+
+# Define gene sets for reactome pathway clusters
+
+```{r}
+# list of pathway cluster gene sets
+pathway_sets <- lapply(setNames(gsea_net_reduced$nodes$id, gsea_net_reduced$nodes$id), function(x) {
+  gsea_net_reduced$nodes %>% 
+    dplyr::filter(id == x) %>% 
+    dplyr::pull(genes) %>% 
+    strsplit(',') %>% 
+    unlist()
+})
+
+# check distribution of treatment response sets
+DEGs_pathway_distr <- lapply(seq(1:length(pathway_sets)), function(i) {
+  data.frame(id = i,
+             cluster = names(pathway_sets)[i],
+             total_genes = length(pathway_sets[[i]]),
+             total_genes_in_background = length(dplyr::intersect(pathway_sets[[i]], RNAseq$annotation$external_gene_name)),
+             non_reverted = length(dplyr::intersect(pathway_sets[[i]], DEG_sets$gene_symbols$non_reverted)),
+             reverted = length(dplyr::intersect(pathway_sets[[i]], DEG_sets$gene_symbols$reverted)),
+             DPN_DIP = length(dplyr::intersect(pathway_sets[[i]], DEG_sets$gene_symbols$DPN_DIP)),
+             E2_PPT = length(dplyr::intersect(pathway_sets[[i]], DEG_sets$gene_symbols$E2_PPT)))
+}) %>% 
+  dplyr::bind_rows()
+
+# write.table(DEGs_pathway_distr,
+#             file = 'results/bulkRNAseq_mmus_GSEA_reactome_clusters_DEGs_intersection.tsv',
+#             sep = '\t',
+#             col.names = TRUE,
+#             row.names = FALSE,
+#             quote = FALSE)
+
+```
+
+
+# Export data
+
+```{r}
+# GSEA results and network
+# saveRDS(gsea_res, file = 'results/bulkRNAseq_mmus_GSEA_reactome_results.rds')
+# saveRDS(gsea_net, file = 'results/bulkRNAseq_mmus_GSEA_reactome_network.rds')
+
+# gene sets for defined reactome pathway clusters
+# saveRDS(pathway_sets, file = 'results/bulkRNAseq_mmus_GSEA_reactome_cluster_sets.rds')
+
+```
+
+
+```{r}
+sessionInfo()
+
+```

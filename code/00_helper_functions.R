@@ -221,3 +221,97 @@ runGSEA <- function(gene.rnk, gene.sets, min.size, max.size, eps = 0.0, nproc = 
   
   return(res)
 }
+
+
+#' Calculates similarity between two sets using selected method
+#' @param x Character vector with elements from first set
+#' @param y Character Vector with elements from second set
+#' @param method Method used for determining similarity between sets
+#' @return Similarity value
+#' 
+#' @author carlga
+#'
+getSimilarity <- function(x, y, method = NULL) {
+  
+  if(is.null(method)) stop('Please, indicate a valid method\n')
+  
+  set.x <- unique(x)
+  set.y <- unique(y)
+  
+  if(method == "overlap") {
+    intersection_n <- length(dplyr::intersect(set.x, set.y))
+    min_n <- min(c(length(set.x), length(set.y)))
+    res <- intersection_n/min_n
+  }
+  else if(method == "jaccard") {
+    intersection_n <- length(intersect(set.x, set.y))
+    union_n <- length(set.x) + length(set.y) - intersection_n
+    res <- intersection_n/union_n
+  }
+  else stop('This method is not available\n')
+  
+  return(res)
+}
+
+
+#' Generates network from gene set enrichment analysis (GSEA) results
+#' @param gsea.res List of GSEA results
+#' @param gene.sets List with gene sets
+#' @param gsea.cutoff Cutoff for determining significantly changed gene sets
+#' @param similarity.method Approach for similarity calculation between gene sets 
+#' ('overlap', 'jaccard' or 'combined')
+#' @param similarity.cutoff Cutoff for filtering edges based on similarity
+#' @return List with node and edge tables for similarity network of enriched gene sets
+#' 
+#' @author carlga
+#'
+buildGSEANetwork <- function(gsea.res, 
+                             gene.sets, 
+                             gsea.cutoff=0.05, 
+                             similarity.method='combined', 
+                             similarity.cutoff=0.5) {
+  
+  enriched <- lapply(gsea.res, function(x) x$all[padj<gsea.cutoff]$pathway)
+  enriched <- unique(unlist(enriched))
+  enriched <- split(enriched, 1:length(enriched))
+  
+  nodes <- lapply(enriched, function(set) {
+    lapply(names(gsea.res), function(comp) {
+      data.frame(id = rep(set, 3),
+                 type = rep('ENR', 3),
+                 genes = rep(paste(gene.sets[[set]], collapse = ','), 3),
+                 size = rep(length(gene.sets[[set]]), 3),
+                 name = paste(rep(comp, 3), c('NES', 'pval', 'padj'), sep = '_'),
+                 value = unlist(gsea.res[[comp]]$all[pathway == set, c('NES', 'pval', 'padj')]))
+    })
+  })
+  nodes <- dplyr::bind_rows(nodes)
+  nodes <- tidyr::pivot_wider(nodes)
+  
+  edges <- lapply(enriched, function(set1) {
+    edges <- lapply(enriched, function(set2) {
+      if(similarity.method == 'combined') {
+        overlap.sim <- getSimilarity(gene.sets[[set1]],gene.sets[[set2]], method = 'overlap')
+        jaccard.sim <- getSimilarity(gene.sets[[set1]],gene.sets[[set2]], method = 'jaccard')
+        sim <- (overlap.sim+jaccard.sim)/2
+      }
+      else {
+        sim <- getSimilarity(gene.sets[[set1]],gene.sets[[set2]], method = similarity.method)
+      }
+      data.frame(source = set1,
+                 target = set2,
+                 interaction = 'overlap',
+                 genes = paste(dplyr::intersect(gene.sets[[set1]], gene.sets[[set2]]), collapse = ','),
+                 size = length(dplyr::intersect(gene.sets[[set1]], gene.sets[[set2]])),
+                 similarity = sim)
+    })
+    dplyr::bind_rows(edges)
+  })
+  edges <- dplyr::bind_rows(edges)
+  edges <- dplyr::filter(edges, source != target & similarity > similarity.cutoff)
+  
+  net <- list(nodes = nodes,
+              edges = edges)
+  
+  return(net)
+}
