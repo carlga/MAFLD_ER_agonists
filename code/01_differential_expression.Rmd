@@ -4,12 +4,7 @@ subtitle: 'BulkRNAseq - Differential expression analysis'
 author: 'Christian Sommerauer & Carlos Gallardo'
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  html_document:
-    theme: flatly
-    toc: yes
-    toc_float:
-      collapsed: false
-      smooth_scroll: false
+  pdf_document:
     highlight: tango
 ---
 
@@ -19,7 +14,7 @@ path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
 path <- path[-c((length(path)-0):length(path))]
 path <- paste(path, collapse = '/')
 knitr::opts_knit$set(root.dir = path)
-knitr::opts_chunk$set(echo = T, message = F, warning = F)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
 
 ```
 

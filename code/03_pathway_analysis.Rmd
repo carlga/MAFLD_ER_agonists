@@ -1,18 +1,11 @@
 ---
-title: "Hepatoprotective effects of systemic ER activation"
-author: "Christian Sommerauer & Carlos Gallardo"
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'BulkRNAseq - Pathway analysis'
+author: 'Christian Sommerauer & Carlos Gallardo'
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  html_document:
-    theme: flatly
-    toc: yes
-    toc_float:
-      collapsed: no
-      smooth_scroll: no
-    highlight: tango
   pdf_document:
-    toc: yes
-subtitle: BulkRNAseq - Pathway analysis
+    highlight: tango
 ---
 
 ```{r setup, include=FALSE}
@@ -21,7 +14,7 @@ path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
 path <- path[-c((length(path)-0):length(path))]
 path <- paste(path, collapse = '/')
 knitr::opts_knit$set(root.dir = path)
-knitr::opts_chunk$set(echo = T, message = F, warning = F, cache = T)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
 
 ```
 
