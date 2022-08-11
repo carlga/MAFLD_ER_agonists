@@ -1,0 +1,416 @@
+---
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'Single cell analysis'
+author: 'Christian Sommerauer & Carlos Gallardo'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-0):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+
+```
+
+```{r}
+# source and library import
+source('code/00_helper_functions.R')
+library(tidyverse)
+library(Seurat)
+library(pagoda2)
+library(patchwork)
+
+```
+
+```{r}
+# color palettes
+colPals <- list()
+colPals$conditions <- setNames(c('#E98BB6', '#B02262', '#7F9AD7', '#2A2F72', '#7DC7D1', '#339ACD', '#356FB5', '#2B40AB'),
+                               c('CDf', 'HFDf', 'CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT'))
+colPals$RdBu <- rev(RColorBrewer::brewer.pal(n=11, name = 'RdBu'))
+colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
+                           c('up', 'down'))
+colPals$clusters <- setNames(c('#A9D265', '#82506D', '#FA9F1C', '#676A6E'),
+                             c('1', '2', '3', '4'))
+colPals$celltypes <- setNames(c('#B4272F', '#E5462D', '#FFD1D1', '#F4E54C', '#FBAA3E', '#AA654E', '#B58B80', '#6D7AA5', 
+                                '#B3177E', '#CAC1DD', '#67227D','#36B449', '#82C349', '#A9D265', '#199478', '#95A3A3', '#C4C5C7'),
+                              c('Cholangiocytes', 'Endothelial cells', 'HsPCs', 'Stromal cells', 'Hepatocytes', 
+                                'Kupffer cells', 'Monocytes & Monocyte-derived cells', 'T cells', 'NK cells', 
+                                'ILC1s', 'B cells', 'cDC1s', 'cDC2s', 'Mig. cDCs', 'pDCs', 'Basophils', 'Neutrophils'))
+colPals$inferno <- c('#FCFFA4', '#FCA50A', '#DD513A', '#932667', '#420A68', '#000004')
+
+```
+
+
+# Load data
+
+```{r}
+# Liver Cell Atlas data from Guilliams et al. 2022 (https://www.livercellatlas.org/download.php)
+liver <- readRDS(file = 'data/livercellatlas_feb2022.rds')
+
+# gene sets
+DEG_sets <- readRDS('results/bulkRNAseq_mmus_DEG_sets.rds')
+pathway_sets <- readRDS('results/bulkRNAseq_mmus_GSEA_reactome_cluster_sets.rds')
+
+```
+
+
+# Mouse single-cell map
+
+```{r}
+df <- liver$mouseStSt$All@meta.data %>% 
+  dplyr::mutate(annot = replace(annot, annot == 'Fibroblasts', 'Stromal cells'))
+
+ggplot(df, aes(x=UMAP_1, y=UMAP_2, color=annot, fill=annot, label=annot)) +
+  geom_point(shape=21, size=1) +
+  scale_fill_manual(values = colPals$celltypes) +
+  scale_color_manual(values = colPals$celltypes) +
+  xlab("UMAP 1") + ylab("UMAP 2") +
+  theme_bw() +
+  guides(colour = guide_legend(override.aes = list(size=3))) +
+  theme(legend.title = element_blank())
+
+```
+
+
+# Cell type composition
+
+```{r}
+df <- liver$mouseStSt$All@meta.data %>% 
+  dplyr::mutate(annot = replace(annot, annot == 'Fibroblasts', 'Stromal cells')) %>% 
+  dplyr::filter(digest == 'inVivo') %>% 
+  dplyr::group_by(annot) %>% 
+  dplyr::summarize(mouseStSt_n = dplyr::n()) %>% 
+  dplyr::mutate(mouseStSt_freq = round(mouseStSt_n / sum(mouseStSt_n) * 100, 2))
+
+df2 <- liver$mouseNAFLD$All@meta.data %>% 
+  dplyr::filter(digest == 'inVivo') %>% 
+  dplyr::mutate(annot = replace(annot, annot == 'KCs', 'Kupffer cells')) %>% 
+  dplyr::mutate(annot = replace(annot, annot == 'Mono/mono-derived cells', 'Monocytes & Monocyte-derived cells')) %>% 
+  dplyr::mutate(annot = replace(annot, annot == 'Mig cDCs', 'Mig. cDCs')) %>% 
+  dplyr::group_by(annot) %>% 
+  dplyr::summarize(mouseNAFLD_n = dplyr::n()) %>% 
+  dplyr::mutate(mouseNAFLD_freq = round(mouseNAFLD_n / sum(mouseNAFLD_n) * 100, 2))
+
+df <- dplyr::full_join(df, df2, by = 'annot') %>% 
+  replace(is.na(.), 0) %>% 
+  tidyr::pivot_longer(cols = c(mouseStSt_freq, mouseNAFLD_freq), names_to = 'cond', values_to = 'freq') %>% 
+  dplyr::mutate(annot = factor(annot, levels = rev(names(colPals$celltypes))),
+                cond = factor(cond, levels = c('mouseStSt_freq','mouseNAFLD_freq')))
+
+ggplot(df, aes(x=freq, y=annot, fill=cond, label=freq)) +
+  geom_bar(color="black", size=0.5, width=0.8, position="stack", stat="identity") +
+  geom_text(size=3, hjust=-0.2) +
+  scale_fill_manual(values = unname(colPals$conditions[c('CDm', 'HFDm')])) +
+  scale_x_continuous(expand = expansion(mult = c(.0, .1)),
+                     limit = c(0, 50),
+                     breaks = c(0, 25, 50)) +
+  facet_wrap(~cond) +
+  xlab('Abundance (%)') +
+  theme_bw() +
+  theme(strip.background = element_blank())
+
+```
+
+
+# Cell type specificity of ER activation signatures
+
+```{r, fig.width=12, fig.height=3.5}
+# subsample single-cell data to 5000 cells per cell type for enrichment analysis
+dat <- liver$mouseStSt$All
+subs <- dat@meta.data %>% 
+  tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::group_by(annot) %>% 
+  dplyr::slice_sample(n=5000)
+dat <- subset(dat, cells = subs$cellid)
+
+res <- getPAS(x = dat, 
+              gene.sets = DEG_sets$gene_symbols, 
+              npcs = 100)
+
+p <- lapply(names(DEG_sets$gene_symbols), function(set) {
+  local({
+    df <- data.frame(UMAP_1 = res$UMAP_1,
+                     UMAP_2 = res$UMAP_2)
+    df$score <- res[, set]
+    p1 <- ggplot(df, aes(x=UMAP_1, y=UMAP_2, color=score)) +
+      geom_point(shape=19, size=1) +
+      scale_color_gradientn(colours = colPals$inferno) +
+      theme_void() +
+      theme(legend.position = 'none',
+            plot.title = element_text(hjust = 0.5)) +
+      ggtitle(set)
+  })
+})
+
+patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T, guides = 'collect')
+
+```
+
+
+# Conservation of cell type specificities in primates
+
+## Human
+
+```{r, fig.width=12, fig.height=3.5}
+# subsample single-cell data to 5000 cells per cell type for enrichment analysis
+dat <- liver$human$All
+subs <- dat@meta.data %>% 
+  tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::group_by(annot) %>% 
+  dplyr::slice_sample(n=5000)
+dat <- subset(dat, cells = subs$cellid)
+
+res <- getPAS(x = dat, 
+              gene.sets = lapply(DEG_sets$gene_symbols, toupper), 
+              npcs = 100)
+
+p <- lapply(names(DEG_sets$gene_symbols), function(set) {
+  local({
+    df <- data.frame(UMAP_1 = res$UMAP_1,
+                     UMAP_2 = res$UMAP_2)
+    df$score <- res[, set]
+    p1 <- ggplot(df, aes(x=UMAP_1, y=UMAP_2, color=score)) +
+      geom_point(shape=19, size=1) +
+      scale_color_gradientn(colours = colPals$inferno) +
+      theme_void() +
+      theme(legend.position = 'none',
+            plot.title = element_text(hjust = 0.5)) +
+      ggtitle(set)
+  })
+})
+
+patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T, guides = 'collect')
+
+```
+
+
+## Macaque
+
+```{r, fig.width=12, fig.height=3.5}
+# subsample single-cell data to 5000 cells per cell type for enrichment analysis
+dat <- liver$multisp$monkey
+subs <- dat@meta.data %>% 
+  tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::group_by(annot) %>% 
+  dplyr::slice_sample(n=5000)
+dat <- subset(dat, cells = subs$cellid)
+
+res <- getPAS(x = dat, 
+              gene.sets = lapply(DEG_sets$gene_symbols, toupper), 
+              npcs = 100)
+
+p <- lapply(names(DEG_sets$gene_symbols), function(set) {
+  local({
+    df <- data.frame(UMAP_1 = res$UMAP_1,
+                     UMAP_2 = res$UMAP_2)
+    df$score <- res[, set]
+    p1 <- ggplot(df, aes(x=UMAP_1, y=UMAP_2, color=score)) +
+      geom_point(shape=19, size=1) +
+      scale_color_gradientn(colours = colPals$inferno) +
+      theme_void() +
+      theme(legend.position = 'none',
+            plot.title = element_text(hjust = 0.5)) +
+      ggtitle(set)
+  })
+})
+
+patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T, guides = 'collect')
+
+```
+
+
+# Liver zoonation of ER activation signatures (spatial transcriptomics)
+
+```{r, fig.width=12, fig.height=3.5}
+# subsample single-cell data to 5000 cells per cell type for enrichment analysis
+dat <- liver$mouseStSt$Visium
+subs <- dat@meta.data %>% 
+  tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::group_by(zonationGroup) %>% 
+  dplyr::slice_sample(n=5000)
+dat <- subset(dat, cells = subs$cellid)
+
+res <- getPAS(x = dat, 
+              gene.sets = DEG_sets$gene_symbols, 
+              npcs = 100)
+
+p <- lapply(names(DEG_sets$gene_symbols), function(set) {
+  local({
+    df <- data.frame(UMAP_1 = res$UMAP_1,
+                     UMAP_2 = res$UMAP_2)
+    df$score <- res[, set]
+    p1 <- ggplot(df, aes(x=UMAP_1, y=UMAP_2, color=score)) +
+      geom_point(shape=19, size=1) +
+      scale_color_gradientn(colours = colPals$inferno) +
+      theme_void() +
+      theme(legend.position = 'none',
+            plot.title = element_text(hjust = 0.5)) +
+      ggtitle(set)
+  })
+})
+
+patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T, guides = 'collect')
+
+```
+
+
+# Pathway enrichment across cell types
+
+## Steady State
+
+```{r, fig.width=12, fig.height=10}
+# subsample single-cell data to 5000 cells per cell type for enrichment analysis
+dat <- liver$mouseStSt$All
+subs <- dat@meta.data %>% 
+  tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::group_by(annot) %>% 
+  dplyr::slice_sample(n=5000)
+dat <- subset(dat, cells = subs$cellid)
+
+res <- getPAS(x = dat, 
+              gene.sets = pathway_sets, 
+              npcs = 100)
+
+df <- res %>% 
+  dplyr::mutate(annot = replace(annot, annot == 'Fibroblasts', 'Stromal cells')) %>% 
+  dplyr::group_by(annot) %>% 
+  dplyr::summarize(dplyr::across(`Adaptive immune system`:`Vitamin metabolism`, mean)) %>% 
+  dplyr::mutate(across(`Adaptive immune system`:`Vitamin metabolism`, ~ (.-min(.)) / (max(.)-min(.)) )) %>% 
+  tidyr::pivot_longer(cols = `Adaptive immune system`:`Vitamin metabolism`, names_to = 'pathway', values_to = 'score') %>% 
+  dplyr::mutate(annot = factor(annot, levels = rev(names(colPals$celltypes))),
+                pathway = factor(pathway, levels = names(pathway_sets)))
+
+p <- lapply(names(pathway_sets), function(set) {
+  local({
+    df <- data.frame(UMAP_1 = res$UMAP_1,
+                     UMAP_2 = res$UMAP_2)
+    df$score <- res[, set]
+    p1 <- ggplot(df, aes(x=UMAP_1, y=UMAP_2, color=score)) +
+      geom_point(shape=19, size=1) +
+      scale_color_gradientn(colours = colPals$inferno) +
+      theme_void() +
+      theme(legend.position = 'none',
+            plot.title = element_text(hjust = 0.5)) +
+      ggtitle(set)
+  })
+})
+
+patchwork::wrap_plots(p, ncol=5, byrow=T, guides = 'collect')
+
+```
+
+
+## NAFLD
+
+```{r, fig.width=12, fig.height=10}
+# subsample single-cell data to 5000 cells per cell type for enrichment analysis
+dat <- liver$mouseNAFLD$All
+subs <- dat@meta.data %>% 
+  tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::group_by(annot) %>% 
+  dplyr::slice_sample(n=5000)
+dat <- subset(dat, cells = subs$cellid)
+
+res <- getPAS(x = dat, 
+              gene.sets = pathway_sets, 
+              npcs = 100)
+
+p <- lapply(names(pathway_sets), function(set) {
+  local({
+    df <- data.frame(UMAP_1 = res$UMAP_1,
+                     UMAP_2 = res$UMAP_2)
+    df$score <- res[, set]
+    p1 <- ggplot(df, aes(x=UMAP_1, y=UMAP_2, color=score)) +
+      geom_point(shape=19, size=1) +
+      scale_color_gradientn(colours = colPals$inferno) +
+      theme_void() +
+      theme(legend.position = 'none',
+            plot.title = element_text(hjust = 0.5)) +
+      ggtitle(set)
+  })
+})
+
+patchwork::wrap_plots(p, ncol=5, byrow=T, guides = 'collect')
+
+```
+
+
+## Comparison of steady state vs NAFLD
+
+```{r, fig.width=16, fig.height=6}
+df2 <- res %>% 
+  dplyr::mutate(annot = replace(annot, annot == 'KCs', 'Kupffer cells')) %>% 
+  dplyr::mutate(annot = replace(annot, annot == 'Mono/mono-derived cells', 'Monocytes & Monocyte-derived cells')) %>% 
+  dplyr::mutate(annot = replace(annot, annot == 'Mig cDCs', 'Mig. cDCs')) %>%
+  dplyr::group_by(annot) %>% 
+  dplyr::summarize(dplyr::across(`Adaptive immune system`:`Vitamin metabolism`, mean)) %>% 
+  dplyr::mutate(dplyr::across(`Adaptive immune system`:`Vitamin metabolism`, ~ (.-min(.)) / (max(.)-min(.)) )) %>% 
+  tidyr::pivot_longer(cols = `Adaptive immune system`:`Vitamin metabolism`, names_to = 'pathway', values_to = 'score') %>% 
+  dplyr::mutate(cond = 'HFD')
+
+df <- df %>% 
+  dplyr::mutate(cond = 'CD') %>% 
+  dplyr::bind_rows(df2) %>% 
+  dplyr::mutate(cond = factor(cond, levels = c('CD','HFD')),
+                annot = factor(annot, levels = rev(names(colPals$celltypes))),
+                pathway = factor(pathway, levels = names(pathway_sets)))
+
+ggplot(df, aes(x=pathway, y=annot, size=score, color=score)) +
+  geom_point() +
+  scale_color_gradientn(colours = colPals$inferno) +
+  scale_size(range = c(1,8))+
+  facet_wrap(~cond) +
+  theme_bw() +
+  theme(strip.background = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        axis.text.y = element_text(hjust = 1, vjust = 0.3))
+
+```
+
+
+# Pathway zonation in the liver
+
+```{r, fig.width=12, fig.height=10}
+# subsample single-cell data to 5000 cells per cell type for enrichment analysis
+dat <- liver$mouseStSt$Visium
+subs <- dat@meta.data %>% 
+  tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::group_by(zonationGroup) %>% 
+  dplyr::slice_sample(n=5000)
+dat <- subset(dat, cells = subs$cellid)
+
+res <- getPAS(x = dat, 
+              gene.sets = pathway_sets, 
+              npcs = 100)
+
+p <- lapply(names(pathway_sets), function(set) {
+  local({
+    df <- data.frame(UMAP_1 = res$UMAP_1,
+                     UMAP_2 = res$UMAP_2)
+    df$score <- res[, set]
+    p1 <- ggplot(df, aes(x=UMAP_1, y=UMAP_2, color=score)) +
+      geom_point(shape=19, size=1) +
+      scale_color_gradientn(colours = colPals$inferno) +
+      theme_void() +
+      theme(legend.position = 'none',
+            plot.title = element_text(hjust = 0.5)) +
+      ggtitle(set)
+  })
+})
+
+patchwork::wrap_plots(p, ncol=5, byrow=T, guides = 'collect')
+
+```
+
+
+```{r}
+sessionInfo()
+
+```

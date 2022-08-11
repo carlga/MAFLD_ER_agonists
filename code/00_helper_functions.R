@@ -315,3 +315,58 @@ buildGSEANetwork <- function(gsea.res,
   
   return(net)
 }
+
+
+#' Calculates pathway activity scores (PAS) using pagoda2 method
+#' @param x Seurat object with single cell data
+#' @param gene.sets List with gene sets
+#' @param npcs Number of principal components to use for dimensionality reduction
+#' @return Data frame with single cell PAS values
+#' 
+#' @author carlga
+#'
+getPAS <- function(x, gene.sets, npcs = 50) {
+  require(Seurat)
+  require(pagoda2)
+  
+  mtx <- as.matrix(Seurat::GetAssayData(x, assay = "RNA", slot = "counts"))
+  res <- x@meta.data
+  
+  cellnames <- colnames(mtx)
+  genenames <- rownames(mtx)
+  p2 <- Pagoda2$new(as.matrix(mtx), n.cores = 1, log.scale=F)
+  
+  p2$adjustVariance(plot=F)
+  
+  p2$calculatePcaReduction(nPcs = npcs, use.odgenes=F,fastpath=F)
+  
+  path_names <- c()
+  env <- new.env(parent=globalenv())
+  invisible(lapply(1:length(gene.sets),function(i) {
+    genes <- intersect(gene.sets[[i]],genenames)
+    name <- paste0(names(gene.sets[i]),i)
+    if(length(genes)>3){
+      assign(name, genes, envir = env)
+      path_names <- c(path_names, name)
+    }
+  }))
+  
+  p2$testPathwayOverdispersion(setenv = env, verbose = T,
+                               recalculate.pca = T,
+                               min.pathway.size = 1, 
+                               max.pathway.size = 2000)
+  
+  path_names <- gsub("^\\d+|\\d+$", "", names(p2$misc$pwpca))
+  score <- matrix(NA,nrow=length(path_names),ncol=length(cellnames))
+  rownames(score) <- path_names
+  colnames(score) <- cellnames
+  for(i in 1:length(p2$misc$pwpca)){
+    if(!is.null(p2$misc$pwpca[[i]]$xp$score)){
+      score[i,] <- as.numeric(p2$misc$pwpca[[i]]$xp$scores)
+    }
+  }
+  score <- as.data.frame(t(score))
+  res <- cbind(res, score)
+  
+  return(res)
+}
