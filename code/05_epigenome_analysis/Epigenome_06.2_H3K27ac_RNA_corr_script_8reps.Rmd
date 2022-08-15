@@ -107,7 +107,7 @@ gr_closest_long_anno <- as.data.frame(gr_closest_long_anno)
 ```{r}
 getwd()
 TPM <- read.delim("5_Correlation_GRE_identification/5.1_bedops_closest/220609_TPM_ordered_df.txt")
-TPM <- TPM %>% dplyr::select(1,2, 11,14,15, 16, 24,25, 30,31)
+TPM <- TPM %>% dplyr::select(1,2, 11,14,15, 16, 23,24, 29,30)
 # We will name the mice according to their original mouse number instead of replicate number. 
 # CD2 and CD9 correspond to CDm1 and CDm4, HFD3 and HFD4 correspond to HFDm2 and HFDm1, DPN2 and DPN3 correspond to DPN1 and DPN2 and E2_8/E2_9 correspond to E2_3 and E2_4.
 colnames(TPM) <- c("ensembl_gene_id", "symbol", "CDm2", "CDm9", "HFDm3", "HFDm4","DPN2", "DPN3", "E2_8", "E2_9")
@@ -165,14 +165,17 @@ K27_GE_long_group <- K27_GE_long_dd %>% group_by(loc_ID, query_ID) %>%
 
 write.table(K27_GE_long_group, "220704_K27_GE_corr_before_filtering.txt", quote=F, row.names=F, sep="\t")
 #load the reverted gene sets
-revUP <- read.delim("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/Results/DEGs/filtered/220204_up_reverted_Genes_symbol_ensembl_CS.txt", header=T)
-revDOWN <- read.delim("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/Results/DEGs/filtered/220204_down_reverted_Genes_symbol_ensembl_CS.txt", header=T)
-revALL <- read.delim("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/Results/DEGs/filtered/220204_all_reverted_Genes_symbol_ensembl_CS.txt", header=T)
-nrow(revALL)
-K27_GE_long_rev_insect <-  K27_GE_long_group %>% filter(ensembl_gene_id %in% revALL$ensembl_gene_id)
+# revUP <- read.delim("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/Results/DEGs/filtered/220204_up_reverted_Genes_symbol_ensembl_CS.txt", header=T)
+# revDOWN <- read.delim("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/Results/DEGs/filtered/220204_down_reverted_Genes_symbol_ensembl_CS.txt", header=T)
+# revALL <- read.delim("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/Results/DEGs/filtered/220204_all_reverted_Genes_symbol_ensembl_CS.txt", header=T)
+# nrow(revALL)
+
+DEGsets <- readRDS("/Users/christian.som/Documents/GitHub/MAFLD_ER_agonists/results/bulkRNAseq_mmus_DEG_sets.rds")
+revALL <- DEGsets$gene_id$reverted
+
+K27_GE_long_rev_insect <-  K27_GE_long_group %>% filter(ensembl_gene_id %in% revALL)
 length(unique(K27_GE_long_rev_insect$ensembl_gene_id))
 
-write.table(K27_GE_long_rev_insect, "5_Correlation_GRE_identification/220701_corr_table_FINDOUTWHATHAPPENED.txt", quote=F, sep="\t")
 
 K27_GE_long_group_plot_pearson <- K27_GE_long_rev_insect %>% filter(abs(correlation_pearson) > 0.75) %>% group_by(loc_ID, query_ID) %>% mutate(name.ident = paste0(symbol, "_", loc_ID))
 nrow(K27_GE_long_group_plot_pearson)/8 # This gives the number of rows divided by 8 -> unique enhancers (loc_IDs)
