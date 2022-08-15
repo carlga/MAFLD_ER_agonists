@@ -1,0 +1,187 @@
+
+```{r, setup, include=FALSE}
+knitr::opts_knit$set(root.dir = '/Users/christian.som/OneDrive - KI.SE/OneDrive - Karolinska Institutet/DATA_PhD/Estrogen_Receptor/ChIP_Seq/220124_Fig5_epigenome_new_analysis/220621_REANALYSE/')
+```
+
+# This script has two parts: 
+
+### in Part 1, we use thr generated bed file with 182 diffbound promoters (one TSS per gene; the file after diffbind analysis still has multiple TSS per gene, 184 total). This bedfile is then converted into a SAF file using awk in command line. This SAF file, together with BAM files is used for featurecounts to generate a count matrix with all reads in these peak regions (this is analyzed on UPPMAX). The same is done for the 1,816 enhancer peaks.
+
+### in Part 2, we import this count matrix into R again, normalize it, calculate significances and generate the plots.
+
+
+# Part 1
+```{bash, eval = FALSE}
+#The enhancer and promoter (with unique TSS, generated in the chunk above) bed files were used to create a saf file using the following command:
+
+awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' in.bed > out.saf
+
+#The saf file was then used to annotate the reads, all bam files (Remove duplicates, blocklist, sorted,..) were used.
+#subread version 2.0.0 was used. 
+
+Following featureCounts chunk was used:
+featureCounts \
+        -g gene_id \
+        -s 2 \
+        -T 2 \
+        -M \
+        -F SAF \
+        -O \
+        -C \
+        -a ${SAF_PATH}/example.saf  \
+        -o ${OUTPUT_PATH}/example.readCount \
+        ${BAM_PATH}/*H3K27ac*MkDup.bam \
+        &> ${OUTPUT_PATH}/example.readCount.log
+        
+        
+        
+        
+        
+# Exact used code:
+
+cd "/Users/christian.som/OneDrive - KI.SE/OneDrive - Karolinska Institutet/DATA_PhD/Estrogen_Receptor/ChIP_Seq/220124_Fig5_epigenome_new_analysis/220621_REANALYSE/"
+bed_path=2.1_Peak_distribution_anno
+quant_path=3_Quantification_reads_in_peaks
+
+awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${bed_path}/220629_promoters_allDB_182_Mart-anno_unique_shortestDistance.bed > ${quant_path}/220629_allDB_promoters_182_shortestDistance.saf
+awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${bed_path}/220629_enhancers_allDB_1816_Mart-anno.bed > ${quant_path}/220629_enhancers_allDB_1816_Mart-anno.saf
+
+the code was then uploaded to uppmax, features counted, then downloaded, finally the header cleaned up (using the bash clean header script).
+```
+
+
+# Part 2
+
+### Import the reads in peaks which was created using feature counts. Then, normalize the reads to do the analysis. Perform an Anova to compare significances between the conditions. 
+
+#### First, for promoters.
+```{r}
+library(tidyverse)
+counts_prom <- read.delim("3_Quantification_reads_in_peaks/Downloaded_from_uppmax/220630_diffbind_HFDall_promoters182_H3K27ac.clean.readCount", header=T) %>% tibble::column_to_rownames("Geneid")
+names(counts_prom) <- c("CDm2","CDm9","HFDm3","HFDm4", "DPN2","DPN3","E2_8","E2_9")
+colsums_prom <- colSums(counts_prom[,])
+
+#normalise per depth
+counts_prom_norm <- sweep(counts_prom, 2, colsums_prom, FUN = "/") 
+counts_prom_norm2 <- counts_prom_norm *10^6
+colSums(counts_prom_norm2[,])
+
+#Combine the replicates
+counts_prom_norm3 <- counts_prom_norm2 %>% 
+  mutate(avg_CD = rowMeans(counts_prom_norm2[,1:2])) %>%
+  mutate(avg_HFD = rowMeans(counts_prom_norm2[,3:4])) %>%
+  mutate(avg_DPN = rowMeans(counts_prom_norm2[,5:6])) %>%
+  mutate(avg_E2 = rowMeans(counts_prom_norm2[,7:8])) %>%
+  tibble::rownames_to_column("loc_ID")
+
+Prom_Diffbind_HFDup <- read.delim("2.1_Peak_distribution_anno/220629_HFDup_promoters_104_Mart-anno_unique_shortestDistance.txt") %>% mutate("loc_ID" = paste0(seqnames, ".",start,".",end), .before = seqnames)
+Prom_Diffbind_HFDdown <- read.delim("2.1_Peak_distribution_anno/220629_HFDdown_promoters_78_Mart-anno_unique_shortestDistance.txt") %>% mutate("loc_ID" = paste0(seqnames, ".",start,".",end), .before = seqnames)
+
+counts_prom_HFDup <- counts_prom_norm3 %>% filter(loc_ID%in%Prom_Diffbind_HFDup$loc_ID) %>% dplyr::select(1,10:13) 
+
+
+counts_prom_HFDup2 <- counts_prom_HFDup %>%
+  pivot_longer(cols=2:5) %>% mutate("updown"= "HFDup") %>% group_by(name)
+
+# STATISTICS - One-sided anova.
+counts_prom_HFDup.stat <- aov(value ~ name, data = counts_prom_HFDup2)
+summary(counts_prom_HFDup.stat)
+counts_prom_HFDup.stat1 <- TukeyHSD(counts_prom_HFDup.stat)
+counts_prom_HFDup.stat2 <- counts_prom_HFDup.stat1$name
+write.table(counts_prom_HFDup.stat2, "3_Quantification_reads_in_peaks/res.aov.prom.HFDup.txt", sep="\t", quote=F, col.names=NA)
+
+counts_prom_HFDdown <- counts_prom_norm3 %>% filter(loc_ID%in%Prom_Diffbind_HFDdown$loc_ID) %>% dplyr::select(1,10:13)
+counts_prom_HFDdown2 <- counts_prom_HFDdown %>%
+  pivot_longer(cols=2:5) %>% mutate("updown"="HFDdown") %>% group_by(name)
+
+# STATISTICS - One-sided anova.
+counts_prom_HFDdown.stat <- aov(value ~ name, data = counts_prom_HFDdown2)
+summary(counts_prom_HFDdown.stat)
+counts_prom_HFDdown.stat1 <- TukeyHSD(counts_prom_HFDdown.stat)
+counts_prom_HFDdown.stat2 <- counts_prom_HFDdown.stat1$name
+write.table(counts_prom_HFDdown.stat2, "3_Quantification_reads_in_peaks/res.aov.prom.HFDdown.txt", sep="\t", quote=F, col.names=NA)
+
+counts_prom_HFD_plot <- rbind(counts_prom_HFDup2, counts_prom_HFDdown2)
+counts_prom_HFD_plot$value <- counts_prom_HFD_plot$value+1
+```
+
+#### Plot for promoters
+```{r}
+order <- c("avg_CD", "avg_HFD", "avg_DPN", "avg_E2")
+ggplot(counts_prom_HFD_plot, aes(x=factor(name, levels=order), y=log2(value), fill=updown)) +
+  geom_boxplot(alpha=0.8) +
+  theme_classic() +
+  facet_wrap(vars(updown)) + 
+  xlab("") +
+  ggtitle("PROMOTERS") +
+  ylab("H3K27ac signal\n log2(normalized read count in \nDA promoter peaks in CDvsHFD)") +
+  scale_fill_manual(values = c("#7f9ad7", "#2c2f72")) +
+  ggsave("3_Quantification_reads_in_peaks/220630_BOXPLOT_H3K27ac_PROMOTERS_readsInPeaks_dbCDvsHFD.pdf", width=15, height=10, units="cm")
+```
+
+#### Then, for enhancers
+```{r}
+library(dplyr)
+library(tidyr)
+counts_enha <- read.delim("3_Quantification_reads_in_peaks/Downloaded_from_uppmax/220630_diffbind_HFDall_enhancers1816_H3K27ac.clean.readCount", header=T) %>% tibble::column_to_rownames("Geneid")
+names(counts_enha) <- c("CDm2","CDm9","HFDm3","HFDm4", "DPN2","DPN3","E2_8","E2_9")
+colsums_enha <- colSums(counts_enha[,])
+
+counts_enha_norm <- sweep(counts_enha, 2, colsums_enha, FUN = "/") 
+counts_enha_norm2 <- counts_enha_norm *10^6
+colSums(counts_enha_norm2[,])
+
+#Combine the replicates
+counts_enha_norm3 <- counts_enha_norm2 %>% 
+  mutate(avg_CD = rowMeans(counts_enha_norm2[,1:2])) %>%
+  mutate(avg_HFD = rowMeans(counts_enha_norm2[,3:4])) %>%
+  mutate(avg_DPN = rowMeans(counts_enha_norm2[,5:6])) %>%
+  mutate(avg_E2 = rowMeans(counts_enha_norm2[,7:8])) %>%
+  tibble::rownames_to_column("loc_ID")
+
+#Import the diffbound enhancers (up, down separately)
+Enha_Diffbind_HFDup <- read.delim("2.1_Peak_distribution_anno/220629_enhancers_HFDup_1211_Mart-anno.txt") %>% mutate("loc_ID" = paste0(seqnames, ".",start,".",end), .before = seqnames)
+Enha_Diffbind_HFDdown <- read.delim("2.1_Peak_distribution_anno/220629_enhancers_HFDdown_605_Mart-anno.txt") %>% mutate("loc_ID" = paste0(seqnames, ".",start,".",end), .before = seqnames)
+
+counts_enha_HFDup <- counts_enha_norm3 %>% filter(loc_ID%in%Enha_Diffbind_HFDup$loc_ID) %>% dplyr::select(1,10:13) 
+counts_enha_HFDup2 <- counts_enha_HFDup %>% 
+  pivot_longer(cols=2:5) %>% mutate("updown"= "HFDup")
+
+# STATISTICS - One-sided anova.
+res.aov.enha.HFDup.stat <- aov(value ~ name, data = counts_enha_HFDup2)
+summary(res.aov.enha.HFDup.stat)
+res.aov.enha.HFDup.stat1 <- TukeyHSD(res.aov.enha.HFDup.stat)
+res.aov.enha.HFDup.stat2 <- res.aov.enha.HFDup.stat1$name
+write.table(res.aov.enha.HFDup.stat2, "3_Quantification_reads_in_peaks/res.aov.enha.HFDup.txt", sep="\t", quote=F, col.names=NA)
+
+counts_enha_HFDdown <- counts_enha_norm3 %>% filter(loc_ID%in%Enha_Diffbind_HFDdown$loc_ID) %>% dplyr::select(1,10:13) 
+counts_enha_HFDdown2 <- counts_enha_HFDdown %>%
+  pivot_longer(cols=2:5) %>% mutate("updown"="HFDdown")
+
+# STATISTICS - One-sided anova.
+res.aov.enha.HFDdown.stat <- aov(value ~ name, data = counts_enha_HFDdown2)
+summary(res.aov.enha.HFDdown.stat)
+res.aov.enha.HFDdown.stat1 <- TukeyHSD(res.aov.enha.HFDdown.stat)
+res.aov.enha.HFDdown.stat2 <- res.aov.enha.HFDdown.stat1$name
+write.table(res.aov.enha.HFDdown.stat2, "3_Quantification_reads_in_peaks/res.aov.enha.HFDdown.txt", sep="\t", quote=F, col.names=NA)
+
+counts_enha_HFD_plot <- rbind(counts_enha_HFDup2, counts_enha_HFDdown2)
+counts_enha_HFD_plot$value <- counts_enha_HFD_plot$value+1
+```
+#### Plot for enhancers
+```{r}
+ggplot(counts_enha_HFD_plot, aes(x=factor(name, levels=order), y=log2(value), fill=updown)) +
+  geom_boxplot(alpha=0.8) +
+  theme_classic() +
+  facet_wrap(vars(updown)) + 
+  xlab("") +
+  ggtitle("ENHANCERS") +
+  ylab("H3K27ac signal\n log2(normalized read count in \nDA enhancer peaks in CDvsHFD)") +
+  scale_fill_manual(values = c("#7f9ad7", "#2c2f72")) +
+  ggsave("3_Quantification_reads_in_peaks/220630_BOXPLOT_H3K27ac_enhancers_readsInPeaks_dbCDvsHFD.pdf", width=15, height=10, units="cm")
+```
+
+```{r}
+sessionInfo()
+```
+

@@ -1,0 +1,234 @@
+#DIFFBIND SCRIPT
+#CREATED: 210717
+#EDITED: 220216
+#EDITED/RE-RUN: 220623 - with the peakfiles downloaded from arrayexpress
+
+```{r, setup, include=FALSE}
+knitr::opts_knit$set(root.dir = '/Users/christian.som/')
+```
+
+```{r}
+library(tidyverse)
+library(DiffBind)
+```
+
+```{r}
+sessionInfo()
+```
+
+```{r}
+getwd()
+samples <- c("CD2", "CD9", "HFD3", "HFD4","DPN2", "DPN3", "E2_8", "E2_9")
+Factor_K27 <- c(rep("H3K27ac", 8))
+PeakCaller <- c(rep("macs", 8))
+Replicate <- c(rep(1:2, 4))
+Treatment <- c(rep("CD", 2), rep("HFD", 2), rep("DPN", 2), rep("E2", 2)) 
+files_K27 <- c("210714_H3K4me3_K27ac_HFD_ESR_analysis/Downloaded_Peaks_ArrayExpress/CK0744_H3K27ac_CD2_peaks.broadPeak",
+           "210714_H3K4me3_K27ac_HFD_ESR_analysis/Downloaded_Peaks_ArrayExpress/CK0745_H3K27ac_CD9_peaks.broadPeak",
+           "210714_H3K4me3_K27ac_HFD_ESR_analysis/Downloaded_Peaks_ArrayExpress/CK0746_H3K27ac_HFD3_peaks.broadPeak",
+           "210714_H3K4me3_K27ac_HFD_ESR_analysis/Downloaded_Peaks_ArrayExpress/CK0747_H3K27ac_HFD4_peaks.broadPeak",
+           "210714_H3K4me3_K27ac_HFD_ESR_analysis/Downloaded_Peaks_ArrayExpress/CK0748_H3K27ac_DPN2_peaks.broadPeak",
+           "210714_H3K4me3_K27ac_HFD_ESR_analysis/Downloaded_Peaks_ArrayExpress/CK0749_H3K27ac_DPN3_peaks.broadPeak",
+           "210714_H3K4me3_K27ac_HFD_ESR_analysis/Downloaded_Peaks_ArrayExpress/CK0750_H3K27ac_E2_8_peaks.broadPeak",
+           "210714_H3K4me3_K27ac_HFD_ESR_analysis/Downloaded_Peaks_ArrayExpress/CK0751_H3K27ac_E2_9_peaks.broadPeak")
+
+bam.files_K27 <- c("210714_H3K4me3_K27ac_HFD_ESR_analysis/Mapping/210716_CK0744_H3K27ac_CD2_psort_BL_fix_MkDup.bam",
+               "210714_H3K4me3_K27ac_HFD_ESR_analysis/Mapping/210716_CK0745_H3K27ac_CD9_psort_BL_fix_MkDup.bam",
+               "210714_H3K4me3_K27ac_HFD_ESR_analysis/Mapping/210716_CK0746_H3K27ac_HFD3_psort_BL_fix_MkDup.bam",
+               "210714_H3K4me3_K27ac_HFD_ESR_analysis/Mapping/210716_CK0747_H3K27ac_HFD4_psort_BL_fix_MkDup.bam",
+               "210714_H3K4me3_K27ac_HFD_ESR_analysis/Mapping/210716_CK0748_H3K27ac_DPN2_psort_BL_fix_MkDup.bam",
+               "210714_H3K4me3_K27ac_HFD_ESR_analysis/Mapping/210716_CK0749_H3K27ac_DPN3_psort_BL_fix_MkDup.bam",
+               "210714_H3K4me3_K27ac_HFD_ESR_analysis/Mapping/210716_CK0750_H3K27ac_E2_8_psort_BL_fix_MkDup.bam",
+               "210714_H3K4me3_K27ac_HFD_ESR_analysis/Mapping/210716_CK0751_H3K27ac_E2_9_psort_BL_fix_MkDup.bam")
+
+metaData_K27 <- data.frame(SampleID = samples, Factor = Factor_K27, Replicate = Replicate, Peaks = files_K27, bamReads = bam.files_K27, PeakCaller, Treatment=Treatment)
+samplesheet_K27 <- dba(sampleSheet=metaData_K27)
+```
+```{r}
+dba.plotHeatmap(samplesheet_K27)
+```
+
+```{r}
+samplesheet.counted_K27 <- dba.count(samplesheet_K27, minOverlap = 2)
+dba.overlap(samplesheet_K27,mode=DBA_OLAP_RATE)
+```
+
+```{r}
+#That is a PCA based on read counts
+dba.plotPCA(samplesheet.counted_K27, label=DBA_ID)
+```
+
+```{r}
+contrasts_K27 <- dba.contrast(samplesheet.counted_K27, categories=c(DBA_TREATMENT), minMembers=2)
+samplesheet.analysed_K27 <- dba.analyze(contrasts_K27)
+```
+
+```{r}
+#That is a PCA based on diffbound sites of given contrast
+##Get contrast numbers
+dba.show(samplesheet.analysed_K27, bContrast=T)
+dba.plotPCA(samplesheet.analysed_K27, contrast = 1)
+```
+
+```{r}
+dba.plotVolcano(samplesheet.analysed_K27, contrast = 1)
+```
+
+```{r}
+dba.plotBox(samplesheet.analysed_K27, contrast =5)
+```
+```{r}
+RE_ANALYSE_FOLDER <- "/Users/christian.som/OneDrive - KI.SE/OneDrive - Karolinska Institutet/DATA_PhD/Estrogen_Receptor/ChIP_Seq/220124_Fig5_epigenome_new_analysis/220621_REANALYSE"
+```
+
+# Choose appropriate contrasts, export the full tables, then filter for signficant changes with a minimum foldchange of 50% up or down. 
+# Then split the peaks into Loss/Gain in HFD and export bed files with these sites.
+```{r}
+res_deseq_K27_CD_vs_HFD <- dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 1, th=1)
+res_deseq_K27_HFD_vs_DPN <- dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 4, th=1)
+res_deseq_K27_HFD_vs_E2 <- dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 5, th=1)
+res_deseq_K27_E2_vs_DPN <- dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 6, th=1)
+
+#Make the final objects dataframes
+out_diffbind_K27_CD_vs_HFD <- as.data.frame(res_deseq_K27_CD_vs_HFD)
+out_diffbind_K27_HFD_vs_DPN  <- as.data.frame(res_deseq_K27_HFD_vs_DPN)
+out_diffbind_K27_HFD_vs_E2  <- as.data.frame(res_deseq_K27_HFD_vs_E2)
+out_diffbind_K27_E2_vs_DPN  <- as.data.frame(res_deseq_K27_E2_vs_DPN)
+
+write.table(out_diffbind_K27_CD_vs_HFD, file=paste0(RE_ANALYSE_FOLDER, "/220629_diffbind_all_DB_regions_full_table_K27_CD_vs_HFD_broad.txt"), sep="\t", quote=F, row.names=F, col.names=F)
+write.table(out_diffbind_K27_HFD_vs_DPN, file=paste0(RE_ANALYSE_FOLDER,"/220629_diffbind_all_DB_regions_full_table_K27_HFD_vs_DPN_broad.txt"), sep="\t", quote=F, row.names=F, col.names=F)
+write.table(out_diffbind_K27_HFD_vs_E2, file=paste0(RE_ANALYSE_FOLDER,"/220629_diffbind_all_DB_regions_full_table_K27_HFD_vs_E2_broad.txt"), sep="\t", quote=F, row.names=F, col.names=F)
+write.table(out_diffbind_K27_E2_vs_DPN, file=paste0(RE_ANALYSE_FOLDER,"/220629_diffbind_all_DB_regions_full_table_K27_E2_vs_DPN_broad.txt"), sep="\t", quote=F, row.names=F, col.names=F)
+
+#Both the up- and downregulated peaks in the given contrast orientations
+out_diffbind_all_K27_CD_vs_HFD <- out_diffbind_K27_CD_vs_HFD %>% dplyr::filter(FDR< 0.05 & abs(Fold) > 0.585)
+out_diffbind_all_K27_HFD_vs_DPN <- out_diffbind_K27_HFD_vs_DPN %>% dplyr::filter(FDR< 0.05 & abs(Fold) > 0.585)
+out_diffbind_all_K27_HFD_vs_E2 <- out_diffbind_K27_HFD_vs_E2 %>% dplyr::filter(FDR< 0.05 & abs(Fold) > 0.585)
+
+#Only the upregulated peaks in the given contrast orientations
+out_diffbind_HFDdown_K27_CD_vs_HFD <- out_diffbind_K27_CD_vs_HFD %>% dplyr::filter(FDR< 0.05 & Fold > 0.585)
+out_diffbind_HFDdown_K27_HFD_vs_DPN <- out_diffbind_K27_HFD_vs_DPN %>% dplyr::filter(FDR< 0.05 & Fold > 0.585)
+out_diffbind_HFDdown_K27_HFD_vs_E2 <- out_diffbind_K27_HFD_vs_E2 %>% dplyr::filter(FDR< 0.05 & Fold > 0.585)
+
+#Only the downregulated peaks in the given contrast orientations
+out_diffbind_HFDup_K27_CD_vs_HFD <- out_diffbind_K27_CD_vs_HFD %>% dplyr::filter(FDR< 0.05 & Fold < -0.585)
+out_diffbind_HFDup_K27_HFD_vs_DPN <- out_diffbind_K27_HFD_vs_DPN %>% dplyr::filter(FDR< 0.05 & Fold < -0.585)
+out_diffbind_HFDup_K27_HFD_vs_E2 <- out_diffbind_K27_HFD_vs_E2 %>% dplyr::filter(FDR< 0.05 & Fold < -0.585)
+
+#Both the up- and downregulated peaks in the given contrast orientations; however they cannot be deciphered anymore after column selections.
+bed_all_K27_CD_vs_HFD <- out_diffbind_all_K27_CD_vs_HFD %>% dplyr::select(1:3) %>% mutate(name = "NA") %>% mutate(strand = "NA") 
+bed_all_K27_HFD_vs_DPN <- out_diffbind_all_K27_HFD_vs_DPN %>% dplyr::select(1:3) %>% mutate(name = "NA") %>% mutate(strand = "NA") 
+bed_all_K27_HFD_vs_E2 <- out_diffbind_all_K27_HFD_vs_E2 %>% dplyr::select(1:3) %>% mutate(name = "NA") %>% mutate(strand = "NA") 
+
+#Only the upregulated peaks in the given contrast orientations
+bed_HFDdown_K27_CD_vs_HFD <- out_diffbind_HFDdown_K27_CD_vs_HFD %>% dplyr::select(1:3) %>% mutate(name = "NA") %>% mutate(strand = "NA") 
+bed_HFDdown_K27_HFD_vs_DPN <- out_diffbind_HFDdown_K27_HFD_vs_DPN %>% dplyr::select(1:3) %>% mutate(name = "NA") %>% mutate(strand = "NA") 
+bed_HFDdown_K27_HFD_vs_E2 <- out_diffbind_HFDdown_K27_HFD_vs_E2 %>% dplyr::select(1:3) %>% mutate(name = "NA") %>% mutate(strand = "NA") 
+
+#Only the downregulated peaks in the given contrast orientations
+bed_HFDup_K27_CD_vs_HFD <- out_diffbind_HFDup_K27_CD_vs_HFD %>% dplyr::select(1:3) %>% mutate(name = "NA") %>% mutate(strand = "NA") 
+bed_HFDup_K27_HFD_vs_DPN <- out_diffbind_HFDup_K27_HFD_vs_DPN %>% dplyr::select(1:3) %>% mutate(name = "NA") %>% mutate(strand = "NA") 
+bed_HFDup_K27_HFD_vs_E2 <- out_diffbind_HFDup_K27_HFD_vs_E2 %>% dplyr::select(1:3) %>% mutate(name = "NA") %>% mutate(strand = "NA") 
+
+getwd()
+#Export the diffbound regions
+write.table(bed_all_K27_CD_vs_HFD, file=paste0(RE_ANALYSE_FOLDER,"/220629_diffbind_all_DB_regions_0585_K27_broad_CD_vs_HFD.bed"), sep="\t", quote=F, row.names=F, col.names=F)
+write.table(bed_all_K27_HFD_vs_DPN, file=paste0(RE_ANALYSE_FOLDER,"/220629_diffbind_all_DB_regions_0585_K27_broad_HFD_vs_DPN.bed"), sep="\t", quote=F, row.names=F, col.names=F)
+write.table(bed_all_K27_HFD_vs_E2, file=paste0(RE_ANALYSE_FOLDER,"/220629_diffbind_all_DB_regions_0585_K27_broad_HFD_vs_E2.bed"), sep="\t", quote=F, row.names=F, col.names=F)
+
+write.table(bed_HFDup_K27_CD_vs_HFD, file=paste0(RE_ANALYSE_FOLDER,"/220629_diffbind_HFDup_DB_regions_0585_K27_broad_CD_vs_HFD.bed"), sep="\t", quote=F, row.names=F, col.names=F)
+write.table(bed_HFDup_K27_HFD_vs_DPN, file=paste0(RE_ANALYSE_FOLDER,"/220629_diffbind_HFDup_DB_regions_0585_K27_broad_HFD_vs_DPN.bed"), sep="\t", quote=F, row.names=F, col.names=F)
+write.table(bed_HFDup_K27_HFD_vs_E2, file=paste0(RE_ANALYSE_FOLDER,"/220629_diffbind_HFDup_DB_regions_0585_K27_broad_HFD_vs_E2.bed"), sep="\t", quote=F, row.names=F, col.names=F)
+
+write.table(bed_HFDdown_K27_CD_vs_HFD, file=paste0(RE_ANALYSE_FOLDER,"/220629_diffbind_HFDdown_DB_regions_0585_K27_broad_CD_vs_HFD.bed"), sep="\t", quote=F, row.names=F, col.names=F)
+write.table(bed_HFDdown_K27_HFD_vs_DPN, file=paste0(RE_ANALYSE_FOLDER,"/220629_diffbind_HFDdown_DB_regions_0585_K27_broad_HFD_vs_DPN.bed"), sep="\t", quote=F, row.names=F, col.names=F)
+write.table(bed_HFDdown_K27_HFD_vs_E2, file=paste0(RE_ANALYSE_FOLDER,"/220629_diffbind_HFDdown_DB_regions_0585_K27_broad_HFD_vs_E2.bed"), sep="\t", quote=F, row.names=F, col.names=F)
+```
+
+```{r}
+library("ChIPpeakAnno")
+sessionInfo()
+library("GenomicRanges")
+options(connectionObserver = NULL) #That is a work-around, as the org.Mm. package cannot be loaded 
+library("org.Mm.eg.db")
+library("biomaRt")
+library( reactome.db )
+```
+
+#Annotate all of the coordinates of DiffBound peaks in the different objects. Nearest gene.
+```{r}
+file_list <- list(
+out_diffbind_HFDdown_K27_CD_vs_HFD, 
+out_diffbind_HFDdown_K27_HFD_vs_DPN, 
+out_diffbind_HFDdown_K27_HFD_vs_E2,
+out_diffbind_HFDup_K27_CD_vs_HFD, 
+out_diffbind_HFDup_K27_HFD_vs_DPN, 
+out_diffbind_HFDup_K27_HFD_vs_E2)
+
+names(file_list) <- c(
+"out_diffbind_HFDdown_K27_CD_vs_HFD", 
+"out_diffbind_HFDdown_K27_HFD_vs_DPN", 
+"out_diffbind_HFDdown_K27_HFD_vs_E2",
+"out_diffbind_HFDup_K27_CD_vs_HFD", 
+"out_diffbind_HFDup_K27_HFD_vs_DPN", 
+"out_diffbind_HFDup_K27_HFD_vs_E2")
+
+
+# For annotation, we use the September 2019 version, which was also used for RNAseq.
+listEnsemblArchives()
+mart <- useMart(biomart = "ensembl", dataset = "mmusculus_gene_ensembl", host = "https://sep2019.archive.ensembl.org")
+# use the getAnnotation function to obtain the TSS for ensembl GRCh38.p13.
+annoData <- getAnnotation(mart, featureType = "TSS")
+
+# Annotate the peak files.
+annotated_files <- list()
+for (i in names(file_list)) {
+
+object <- file_list[[i]]
+colnames(object) <- c("chrom", "start", "end")
+nrow(object)
+object2 <- makeGRangesFromDataFrame(object,  start.field = "start", end.field = "end", ignore.strand = T) 
+
+#Give ranges numeric names in order
+names(object2) <- c(1:length(object2))
+
+#Annotate granges with the nearest TSS
+object3 <- annotatePeakInBatch(object2, 
+                               AnnotationData=annoData, 
+                               featureType = "TSS",
+                               output="nearestLocation",
+                               PeakLocForDistance = "start")
+
+annot_df <- as.data.frame(object3)
+annotated_files[[i]] <- annot_df
+
+
+write.table(annot_df, paste0(RE_ANALYSE_FOLDER, "/220629_diffbind_annotated_broad_K27peaks_", i, ".txt", sep= ""),quote = F, row.names = F, sep="\t")
+
+}
+```
+
+#Calculate the percentage of reversed peaks
+```{r}
+#Reversed peak = Differentially bound H3K27ac in CD vs HFD AND also in the treatment vs HFD, in the correct direction (on nearest gene level)
+
+K27_Low_in_HFD <- annotated_files$out_diffbind_HFDdown_K27_CD_vs_HFD
+K27_High_in_HFD <- annotated_files$out_diffbind_HFDup_K27_CD_vs_HFD
+
+High_in_E2vsHFD <- annotated_files$out_diffbind_HFDup_K27_HFD_vs_E2
+Low_in_E2vsHFD <- annotated_files$out_diffbind_HFDdown_K27_HFD_vs_E2
+
+High_in_DPNvsHFD <- annotated_files$out_diffbind_HFDup_K27_HFD_vs_DPN
+Low_in_DPNvsHFD <- annotated_files$out_diffbind_HFDdown_K27_HFD_vs_DPN
+
+Reversed_in_E2 <- c(intersect(K27_Low_in_HFD$feature, High_in_E2vsHFD$feature), intersect(K27_High_in_HFD$feature, Low_in_E2vsHFD$feature))
+print(paste(length(Reversed_in_E2), "of", (nrow(High_in_E2vsHFD)+nrow(Low_in_E2vsHFD)), "E2-altered H3K27ac (by nearest gene!) represent a reversal of HFD"))
+
+Reversed_in_DPN <- c(intersect(K27_Low_in_HFD$feature, High_in_DPNvsHFD$feature), intersect(K27_High_in_HFD$feature, Low_in_DPNvsHFD$feature))
+print(paste(length(Reversed_in_DPN), "of", (nrow(High_in_DPNvsHFD)+nrow(Low_in_DPNvsHFD)), "DPN-altered H3K27ac (by nearest gene!) represent a reversal of HFD"))
+```
+```{r}
+sessionInfo()
+```
+
+
