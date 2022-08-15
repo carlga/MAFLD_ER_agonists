@@ -1,3 +1,4 @@
 *.Rhistory
+*.DS_Store
 *livercellatlas_feb2022.rds
 *random_models_38genes.rds
