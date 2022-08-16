@@ -187,17 +187,213 @@ ggplot(df, aes(x=comparison, y=value)) +
 
 # TBA Fig. S1E-J
 
+# Plot Venn Diagram (Fig S1E)
 ```{r}
-# @christian please add code for figures S1E-J
+library(tidyverse)
+library(VennDiagram)
 
+CDf_HFDf <- DEGs$filt$CDfVsHFDf
+CDm_HFDm <- DEGs$filt$CDmVsHFDm
+
+grid.newpage()
+myCol <- c("#B02262", "#2A2E72")
+venn.plot <- venn.diagram(
+  x = list(CDf_HFDf$ensembl_gene_id, CDm_HFDm$ensembl_gene_id),
+  category.names = c("CDf_HFDf\n(n=327)", "CDm_HFDm \n(n=714)"),
+  filename = NULL,
+  output=T,
+  lwd = 2,
+  lty = 'blank',
+  fill = myCol,
+    cex = 2.5,
+        fontface = "bold",
+        fontfamily = "sans",
+  cat.cex = 1.2,
+        cat.fontface = "bold",
+        cat.default.pos = "outer",
+        cat.fontfamily = "sans",
+  cat.pos = c(-10, 10),
+        cat.dist = c(0.08, 0.08))
+
+grid.draw(venn.plot)
+
+# Make intersection to extract the genes names from Venn.
+intersections <- list("", "", "")
+names(intersections) <- c("shared_genes", "CDf_HFDf_unique", "CDm_HFDm_unique")
+
+intersections[[1]] <- intersect(CDf_HFDf$ensembl_gene_id,CDm_HFDm$ensembl_gene_id)
+intersections[[2]] <- setdiff(CDf_HFDf$ensembl_gene_id, intersections$shared_genes)
+intersections[[3]] <- setdiff(CDm_HFDm$ensembl_gene_id, intersections$shared_genes)
 ```
 
+# Gene Ontologies (Fig S1F,G,H)
+```{r}
+library(clusterProfiler)
+background <- DEGs$unfilt$CDfVsCDm$ensembl_gene_id 
+options(connectionObserver = NULL) # workaround due to a bug
+library(org.Mm.eg.db)
+
+GO_list <- list(GO.results = list(),
+                GO.top8 = list(),
+                term.order.plotting = list())
+
+for (i in 1:3) { 
+GO_list$GO.results[[i]] <- enrichGO(gene = intersections[[i]],
+                keyType       = 'ENSEMBL',
+                OrgDb         = org.Mm.eg.db,
+                ont           = "BP",
+                pAdjustMethod = "BH",
+                pvalueCutoff  = 0.05,
+                qvalueCutoff  = 0.05,
+                minGSSize     = 3,
+                readable      = TRUE,
+                universe = background)
+head(GO_list$GO.results[[i]])
+
+name.me <- c("shared_genes", "CDf_HFDf_unique", "CDm_HFDm_unique")
+
+GO_list$GO.top8[[i]] <- GO_list$GO.results[[i]]@result %>% filter(p.adjust<0.05) %>% mutate(GeneSet = name.me[i]) %>% dplyr::arrange(p.adjust) %>% dplyr::slice(1:8)
+
+GO_list$term.order.plotting[[i]] <- GO_list$GO.top8[[i]] %>% dplyr::pull("Description")
+
+print(ggplot(GO_list$GO.top8[[i]], aes(x=Count, y=factor(Description, levels=rev(GO_list$term.order.plotting[[i]])))) +
+  geom_col(aes(fill=-log10(p.adjust))) +
+  theme_classic() +
+  xlab("") +
+  ylab("") +
+  ggtitle(paste(unique(GO_list$GO.top8[[i]]$GeneSet))) +
+  scale_fill_gradient(low="grey", high= "black", limits=c(1,13)))
+
+} 
+```
+
+# Plot volcanos (Fig S1I,J)
+```{r}
+library(tidyverse)
+library(ggrepel)
+
+# Load dataframes from rds object.
+## DEG in CD comparison
+CDf_CDm <- DEGs$filt$CDfVsCDm
+
+## All genes in given comparisons with fold-changes
+CDf_CDm_unfilt <- DEGs$unfilt$CDfVsCDm
+HFDf_HFDm_unfilt <- DEGs$unfilt$HFDfVsHFDm
+
+# CD comparison
+## Maximum significance and fold-change are capped here.
+CDf_CDm$padj[CDf_CDm$padj < 10e-30] <- 10e-30
+CDf_CDm$log2FoldChange[CDf_CDm$log2FoldChange < (-8)] <- (-8)
+CDf_CDm$log2FoldChange[CDf_CDm$log2FoldChange > (8)] <- (8)
+
+CDf_CDm_unfilt$padj[CDf_CDm_unfilt$padj < 10e-30] <- 10e-30 
+CDf_CDm_unfilt$log2FoldChange[CDf_CDm_unfilt$log2FoldChange < (-8)] <- (-8)
+CDf_CDm_unfilt$log2FoldChange[CDf_CDm_unfilt$log2FoldChange  > (8)] <- (8)
+
+# HFD comparison
+## We do not need the HFD DEG, because we will plot the CDf vs CDm DEG with the HFD fold-changes
+
+HFDf_HFDm_unfilt$padj[HFDf_HFDm_unfilt$padj < 10e-30] <- 10e-30
+HFDf_HFDm_unfilt$log2FoldChange[HFDf_HFDm_unfilt$log2FoldChange < (-8)] <- (-8)
+HFDf_HFDm_unfilt$log2FoldChange[HFDf_HFDm_unfilt$log2FoldChange  > (8)] <- (8)
+
+# Create up and downregulated genes in respective comparisons (larger/smaller than 0 is sufficient because the tables are already filtered for log2(1.75) and FDR < 0.05)
+male_biased_CD <- filter(CDf_CDm, log2FoldChange < 0)
+nrow(male_biased_CD)
+female_biased_CD <- filter(CDf_CDm, log2FoldChange > 0)
+nrow(female_biased_CD)
+```
+
+```{r}
+# These genes will be plotted in both, HFD and CD volcano plots, as sex-biased gene set.
+male_biased_CD_vector <- filter(CDf_CDm, log2FoldChange < 0) %>% dplyr::pull("external_gene_name")
+female_biased_CD_vector <- filter(CDf_CDm, log2FoldChange > 0) %>% dplyr::pull("external_gene_name")
+# Filter the HFD table for genes that are sex-biased in CD.
+male_biased_CD_in_HFDbckgrd <- HFDf_HFDm_unfilt %>% filter(external_gene_name%in%male_biased_CD_vector)
+female_biased_CD_in_HFDbckgrd <- HFDf_HFDm_unfilt %>% filter(external_gene_name%in%female_biased_CD_vector)
+```
+
+```{r}
+ggplot(CDf_CDm_unfilt) +
+  geom_point(data = CDf_CDm_unfilt,
+    aes(x = log2FoldChange, y = -log10(padj)),
+    color = "grey",
+    alpha = 0.3,
+    cex = 1.5) +
+  geom_point(data = male_biased_CD,
+    aes(x = log2FoldChange, y = -log10(padj)),
+    color = "#3498db", # #3498db is blue
+    alpha = 0.8,
+    cex = 2) +
+  geom_point(data = female_biased_CD,
+    aes(x = log2FoldChange, y = -log10(padj)),
+    color =  "#e74c3c" ,
+    alpha = 0.8,
+    cex = 2) +
+  theme_classic() +
+  theme(axis.text = element_text(size=20),
+        axis.title.x = element_text(size=15),
+        axis.title.y = element_text(size=15)) +
+  scale_x_continuous(limits = c(-8.1, 8.1), breaks =c(-8, -4, 0, 4, 8)) +
+  xlab("fold change (log2)") +
+  ylab("padj (-log10)") +
+  geom_vline(xintercept = 0.807,
+    col = "#2e4053",
+    linetype = "dotted",
+    size = 1.5) +
+  geom_vline(xintercept = -0.807,
+    col = "#2e4053",
+    linetype = "dotted",
+    size = 1.5) +
+  geom_hline(yintercept = -log10(0.05),
+    col = "#2e4053",
+    linetype = "dotted",
+    size = 1.5) +
+  ggtitle("Diff. expressed sex-biased genes in control diet\n")
+```
+```{r}
+ggplot(HFDf_HFDm_unfilt) +
+  geom_point(data = HFDf_HFDm_unfilt,
+    aes(x = log2FoldChange, y = -log10(padj)),
+    color = "grey",
+    alpha = 0.3,
+    cex = 1.5) +
+  geom_point(data = male_biased_CD_in_HFDbckgrd,
+    aes(x = log2FoldChange, y = -log10(padj)),
+    color = "#3498db",
+    alpha = 0.8,
+    cex = 2) +
+  geom_point(data = female_biased_CD_in_HFDbckgrd,
+    aes(x = log2FoldChange, y = -log10(padj)),
+    color =  "#e74c3c" ,
+    alpha = 0.8,
+    cex = 2) +
+  theme_classic() +
+  theme(axis.text = element_text(size=20),
+        axis.title.x = element_text(size=15),
+        axis.title.y = element_text(size=15)) +
+  xlab("fold change (log2)") +
+  ylab("padj (-log10)") +
+  scale_x_continuous(limits = c(-8.1, 8.1), breaks =c(-8, -4, 0, 4, 8)) +
+  geom_vline(xintercept = 0.807,
+    col = "#2e4053",
+    linetype = "dotted",
+    size = 1.5) +
+  geom_vline(xintercept = -0.807,
+    col = "#2e4053",
+    linetype = "dotted",
+    size = 1.5) +
+  geom_hline(yintercept = -log10(0.05),
+    col = "#2e4053",
+    linetype = "dotted",
+    size = 1.5) +
+  ggtitle("Fold-changes of Sex-biased (in CD) genes in \n HFD mice")
+```
 
 # Export filtered and normalized RNAseq data
 
 ```{r}
 saveRDS(RNAseq, file = 'results/bulkRNAseq_mmus_data_filt_norm.rds')
-
 ```
 
 
