@@ -4,31 +4,32 @@
 #PROMOTERS
 #Determine all TSSs in CD and HFD - SPLIT FOR UP AND DOWN and all together
 
-cd "/Users/christian.som/OneDrive - KI.SE/OneDrive - Karolinska Institutet/DATA_PhD/Estrogen_Receptor/ChIP_Seq/"
+# Replace this with the path to the github repository
+cd "/Users/christian.som/GitHub/MAFLD_ER_agonists/"
 
-out_path="220124_Fig5_epigenome_new_analysis/220621_REANALYSE/2_Demarcating_enhancers_promoters"
-peak_path="220124_Fig5_epigenome_new_analysis/220621_REANALYSE/PEAK_CALLING_H3K27ac_BROAD"
-diffbind_path="220124_Fig5_epigenome_new_analysis/220621_REANALYSE/1_DiffBind_run_220621"
+out_path="results/Epigenome_analysis"
+peak_path="data/Downloaded_from_Arrayexpress/Peakfiles"
+diffbind_path="results/Epigenome_analysis"
 
 
 #All Peaks
 
 #CD
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_all_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
--b ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0736_H3K4me3_CD2_peaks.narrowPeak \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_all_DB_regions_broad_K27_CDvsHFD.bed \
+-b ${peak_path}/CK0736_H3K4me3_CD2_peaks.narrowPeak \
 > ${out_path}/prom.1.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD2.bed
 #Also do the second replicate
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_all_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
--b ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0737_H3K4me3_CD9_peaks.narrowPeak \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_all_DB_regions_broad_K27_CDvsHFD.bed \
+-b ${peak_path}/CK0737_H3K4me3_CD9_peaks.narrowPeak \
 > ${out_path}/prom.2.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD9.bed
 
 #HFD
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_all_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
--b ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0739_H3K4me3_HFD4_peaks.narrowPeak \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_all_DB_regions_broad_K27_CDvsHFD.bed \
+-b ${peak_path}/CK0739_H3K4me3_HFD4_peaks.narrowPeak \
 > ${out_path}/prom.3.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_HFD4.bed
 #Also do the second replicate
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_all_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
--b ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0738_H3K4me3_HFD3_peaks.narrowPeak \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_all_DB_regions_broad_K27_CDvsHFD.bed \
+-b ${peak_path}/CK0738_H3K4me3_HFD3_peaks.narrowPeak \
 > ${out_path}/prom.4.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_HFD3.bed
 
 #Take the overlap peaks of the respective replicates
@@ -58,21 +59,21 @@ bedtools merge -i ${out_path}/prom.7.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD_HFD.b
 #HFDup peaks only. Starts from prom.9
 
 #CD
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_HFDup_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
--b  ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0736_H3K4me3_CD2_peaks.narrowPeak \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_down_DB_regions_broad_K27_CDvsHFD.bed \
+-b  ${peak_path}/CK0736_H3K4me3_CD2_peaks.narrowPeak \
 > ${out_path}/prom.9.HFDup.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD2.bed
 #Also do the second replicate
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_HFDup_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
--b  ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0737_H3K4me3_CD9_peaks.narrowPeak \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_down_DB_regions_broad_K27_CDvsHFD.bed \
+-b  ${peak_path}/CK0737_H3K4me3_CD9_peaks.narrowPeak \
 > ${out_path}/prom.10.HFDup.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD9.bed
 
 #HFD
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_HFDup_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
--b  ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0739_H3K4me3_HFD4_peaks.narrowPeak \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_down_DB_regions_broad_K27_CDvsHFD.bed \
+-b  ${peak_path}/CK0739_H3K4me3_HFD4_peaks.narrowPeak \
 > ${out_path}/prom.11.HFDup.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_HFD4.bed
 #Also do the second replicate
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_HFDup_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
--b  ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0738_H3K4me3_HFD3_peaks.narrowPeak \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_down_DB_regions_broad_K27_CDvsHFD.bed \
+-b  ${peak_path}/CK0738_H3K4me3_HFD3_peaks.narrowPeak \
 > ${out_path}/prom.12.HFDup.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_HFD3.bed
 
 #Take the overlap peaks of the respective replicates
@@ -103,21 +104,21 @@ bedtools merge -i ${out_path}/prom.15.HFDup.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_C
 #HFDdown peaks only. Starts from prom.17
 
 #CD
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_HFDdown_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
--b  ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0736_H3K4me3_CD2_peaks.narrowPeak \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_up_DB_regions_broad_K27_CDvsHFD.bed \
+-b  ${peak_path}/CK0736_H3K4me3_CD2_peaks.narrowPeak \
 > ${out_path}/prom.17.HFDdown.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD2.bed
 #Also do the second replicate
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_HFDdown_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
--b  ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0737_H3K4me3_CD9_peaks.narrowPeak \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_up_DB_regions_broad_K27_CDvsHFD.bed \
+-b  ${peak_path}/CK0737_H3K4me3_CD9_peaks.narrowPeak \
 > ${out_path}/prom.18.HFDdown.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD9.bed
 
 #HFD
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_HFDdown_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
--b  ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0739_H3K4me3_HFD4_peaks.narrowPeak \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_up_DB_regions_broad_K27_CDvsHFD.bed \
+-b  ${peak_path}/CK0739_H3K4me3_HFD4_peaks.narrowPeak \
 > ${out_path}/prom.19.HFDdown.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_HFD4.bed
 #Also do the second replicate
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_HFDdown_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
--b  ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0738_H3K4me3_HFD3_peaks.narrowPeak \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_up_DB_regions_broad_K27_CDvsHFD.bed \
+-b  ${peak_path}/CK0738_H3K4me3_HFD3_peaks.narrowPeak \
 > ${out_path}/prom.20.HFDdown.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_HFD3.bed
 
 #Take the overlap peaks of the respective replicates
@@ -149,12 +150,12 @@ bedtools merge -i ${out_path}/prom.23.HFDdown.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3
 #Re-create ALL PROMOTERS
 
 #Combined H3K4me3 files
-bedtools intersect -wa -a ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0736_H3K4me3_CD2_peaks.narrowPeak  \
--b ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0737_H3K4me3_CD9_peaks.narrowPeak \
+bedtools intersect -wa -a ${peak_path}/CK0736_H3K4me3_CD2_peaks.narrowPeak  \
+-b ${peak_path}/CK0737_H3K4me3_CD9_peaks.narrowPeak \
 | sort -k1,1 -k2,2n > ${out_path}/prom.1.genomewide.H3K4me3_CD_consens.bed
 
-bedtools intersect -wa -a ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0739_H3K4me3_HFD4_peaks.narrowPeak  \
--b ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0738_H3K4me3_HFD3_peaks.narrowPeak \
+bedtools intersect -wa -a ${peak_path}/CK0739_H3K4me3_HFD4_peaks.narrowPeak  \
+-b ${peak_path}/CK0738_H3K4me3_HFD3_peaks.narrowPeak \
 | sort -k1,1 -k2,2n > ${out_path}/prom.2.genomewide.H3K4me3_HFD_consens.bed
 
 #Merge CD and HFD
@@ -171,11 +172,11 @@ ${out_path}/prom.2.genomewide.H3K4me3_HFD_consens.bed \
 
 #1) Subtract the H3K4me1 data with H3K4me3 data. We do not want H3K4m1 peaks at the TSS.
 #remove all H3K4me3 sites from H3K4me1.
-bedtools intersect -v -a ${peak_path}/K4me1_broad/H3K4me1_1_ERR2731772_peaks_peaks.broadPeak \
+bedtools intersect -v -a ${peak_path}/H3K4me1_1_ERR2731772_peaks_peaks_clean.broadPeak \
 -b ${out_path}/prom.3.genomewide.FINAL.H3K4me3_CD_HFD_merge.bed \
 > ${out_path}/enh.1.H3K4me1_1_minus_H3K4me3.bed
 
-bedtools intersect -v -a ${peak_path}/K4me1_broad/H3K4me1_3_ERR2731776_peaks_peaks.broadPeak \
+bedtools intersect -v -a ${peak_path}/H3K4me1_3_ERR2731776_peaks_peaks_clean.broadPeak \
 -b ${out_path}/prom.3.genomewide.FINAL.H3K4me3_CD_HFD_merge.bed \
 > ${out_path}/enh.2.H3K4me1_3_minus_H3K4me3.bed
 
@@ -189,7 +190,7 @@ bedtools intersect -wa -a ${out_path}/enh.1.H3K4me1_1_minus_H3K4me3.bed \
 
 #All DiffBound peaks
 
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_all_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_all_DB_regions_broad_K27_CDvsHFD.bed \
 -b ${out_path}/enh.3.H3K4me1_minus_H3K4me3_consens.bed \
 > ${out_path}/enh.4.H3K27ac_broad_CDHFD_DB_xxx_H3K4me1_minus_me3.bed
 
@@ -201,7 +202,7 @@ bedtools merge -i ${out_path}/enh.4.H3K27ac_broad_CDHFD_DB_xxx_H3K4me1_minus_me3
 
 #HFDup diffbound peaks. starts with enh.6.
 
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_HFDup_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_down_DB_regions_broad_K27_CDvsHFD.bed \
 -b ${out_path}/enh.3.H3K4me1_minus_H3K4me3_consens.bed \
 > ${out_path}/enh.6.HFDup.H3K27ac_broad_CDHFD_DB_xxx_H3K4me1_minus_me3.bed
 
@@ -215,7 +216,7 @@ bedtools merge -i ${out_path}/enh.6.HFDup.H3K27ac_broad_CDHFD_DB_xxx_H3K4me1_min
 
 #HFDdown diffbound peaks. starts with enh.8.
 
-bedtools intersect -wa -a ${diffbind_path}/220629_diffbind_HFDdown_DB_regions_0585_K27_broad_CD_vs_HFD.bed \
+bedtools intersect -wa -a ${diffbind_path}/Diffbind_up_DB_regions_broad_K27_CDvsHFD.bed \
 -b ${out_path}/enh.3.H3K4me1_minus_H3K4me3_consens.bed \
 > ${out_path}/enh.8.HFDdown.H3K27ac_broad_CDHFD_DB_xxx_H3K4me1_minus_me3.bed
 
@@ -230,12 +231,12 @@ bedtools merge -i ${out_path}/enh.8.HFDdown.H3K27ac_broad_CDHFD_DB_xxx_H3K4me1_m
 
 ## To have everything in the same script - also do all enhancers.
 
-bedtools intersect -wa -a ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0744_H3K27ac_CD2_peaks.broadPeak \
--b ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0745_H3K27ac_CD9_peaks.broadPeak \
+bedtools intersect -wa -a ${peak_path}/CK0744_H3K27ac_CD2_peaks.broadPeak \
+-b ${peak_path}/CK0745_H3K27ac_CD9_peaks.broadPeak \
 > ${out_path}/enh.1.genomewide.H3K27ac_broad_CD_consens.bed
 
-bedtools intersect -wa -a ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0746_H3K27ac_HFD3_peaks.broadPeak \
--b ${peak_path}/Downloaded_Peaks_ArrayExpress/CK0747_H3K27ac_HFD4_peaks.broadPeak \
+bedtools intersect -wa -a ${peak_path}/CK0746_H3K27ac_HFD3_peaks.broadPeak \
+-b ${peak_path}/CK0747_H3K27ac_HFD4_peaks.broadPeak \
 > ${out_path}/enh.2.genomewide.H3K27ac_broad_HFD_consens.bed
 
 #Now merge them together to a combined H3K27ac file.
@@ -253,9 +254,9 @@ sort -k1,1 -k2,2n ${out_path}/enh.4.genomewide.H3K27ac_all_xxx_H3K4me1_minus_K4m
 bedtools merge -i ${out_path}/enh.4.genomewide.H3K27ac_all_xxx_H3K4me1_minus_K4me3.sort.bed  \
 > ${out_path}/enh.5.FINAL.genomewide.H3K27ac_all_xxx_H3K4me1_minus_K4me3.bed
 
-wc -l ${out_path}/*bed > ${out_path}/220630_summary_file_rownumbers.txt
-awk '{gsub("220124_Fig5_epigenome_new_analysis/220621_REANALYSE/2_Demarcating_enhancers_promoters/", "");print}' \
-${out_path}/220630_summary_file_rownumbers.txt > ${out_path}/220630_summary_file_rownumbers.txt
+wc -l ${out_path}/*bed > ${out_path}/summary_file_rownumbers.txt
+awk '{gsub("results/Epigenome_analysis/", "");print}' ${out_path}/summary_file_rownumbers.txt > ${out_path}/summary_rownumbers.txt
+rm summary_file_rownumbers.txt
 
 mkdir ${out_path}/Intermediate_enhancer_files
 mkdir ${out_path}/Intermediate_promoter_files

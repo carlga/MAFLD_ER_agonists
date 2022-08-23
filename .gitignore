@@ -3,5 +3,6 @@
 *livercellatlas_feb2022.rds
 *random_models_38genes.rds
 *Bamfiles
-Peakfiles/CK*
-*Intermediate
+CK07*broadPeak
+CK07*narrowPeak
+Intermediate_*
