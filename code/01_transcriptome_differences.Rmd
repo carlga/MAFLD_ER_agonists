@@ -184,9 +184,6 @@ ggplot(df, aes(x=comparison, y=value)) +
 
 ```
 
-
-# TBA Fig. S1E-J
-
 # Plot Venn Diagram (Fig S1E)
 ```{r}
 library(tidyverse)
