@@ -93,7 +93,7 @@ gr_closest_long_anno <- as.data.frame(gr_closest_long_anno)
 getwd()
 
 source("code/00_helper_functions.R")
-symbol_geneID <- read.delim("data/raw_counts_mmus_symbol_geneID.txt")
+symbol_geneID <- read.delim("data/ensembl_mmus_sep2019_annotation.tsv")[,1:2]
 
 raw_counts <- read.table(
   file = 'data/bulkRNAseq_mmus_rawcounts.tsv',
@@ -158,6 +158,7 @@ sub.K27_K27_GE_long <- pivot_longer(sub.K27_K27_GE_joined, cols=4:11, values_to 
 K27_GE_long <- cbind(sub_GE.K27_GE_long, sub.K27_K27_GE_long)
 
 K27_GE_long_dd <- K27_GE_long[!duplicated(as.list(K27_GE_long))]
+
 # Remove the zeros to not correlate zeros (gives error message - but these genes are removed later anyhow because they are not expressed)
 K27_GE_long_dd <- K27_GE_long_dd %>% group_by(loc_ID, symbol) %>% mutate(filter_zeros = mean(Gene_expression)) %>% filter(filter_zeros > 0) %>% dplyr::select(!filter_zeros)
 nrow(K27_GE_long_dd)/8
@@ -165,7 +166,6 @@ nrow(K27_GE_long_dd)/8
 
 # Import the reverted gene sets and filter the tables
 ```{r}
-# Note we get an error message here, because some genes have zero expression. These will result in a poor correlation filtered out later.
 K27_GE_long_group <- K27_GE_long_dd %>% group_by(loc_ID, query_ID) %>%
   mutate(correlation_pearson = cor(Gene_expression, H3K27ac, method="pearson")) %>%
   mutate(correlation_spearman = cor(Gene_expression, H3K27ac, method="spearman"))
@@ -182,26 +182,21 @@ length(unique(K27_GE_long_rev_insect$ensembl_gene_id))
 K27_GE_long_group_plot_pearson <- K27_GE_long_rev_insect %>% filter(abs(correlation_pearson) > 0.75) %>% group_by(loc_ID, query_ID) %>% mutate(name.ident = paste0(symbol, "_", loc_ID))
 nrow(K27_GE_long_group_plot_pearson)/8 # This gives the number of rows divided by 8 -> unique enhancers (loc_IDs)
 K27_GE_long_group_plot_pearson_revCount <- K27_GE_long_group_plot_pearson %>% mutate(name.ident = paste0(loc_ID, ":", symbol))
-length(unique(K27_GE_long_group_plot_pearson_revCount$name.ident)) #also 131
 
 length(unique(K27_GE_long_group_plot_pearson$ensembl_gene_id))
 
 K27_GE_long_group_plot_spearman <- K27_GE_long_rev_insect %>% filter(abs(correlation_spearman) > 0.75) %>% group_by(loc_ID, query_ID) %>% mutate(name.ident = paste0(symbol, "_", loc_ID))
 length(unique(K27_GE_long_group_plot_spearman$ensembl_gene_id))
 
-# Check the numbers before the intersection with reverted genes. Order does not really matter
-
 K27_GE_long_group_plot_pearson_before_Rev <- K27_GE_long_group %>% filter(abs(correlation_pearson) > 0.75) %>% group_by(loc_ID, query_ID) %>% mutate(name.ident = paste0(symbol, "_", loc_ID))
 nrow(K27_GE_long_group_plot_pearson_before_Rev)/8
 length(unique(K27_GE_long_group_plot_pearson_before_Rev$ensembl_gene_id))
-# 562 unique genes before reverted intersection (pearson). 766 enhancers.
-#
+
+
 K27_GE_long_group_plot_spearman_before_Rev <- K27_GE_long_group %>% filter(abs(correlation_spearman) > 0.75) %>% group_by(loc_ID, query_ID) %>% mutate(name.ident = paste0(symbol, "_", loc_ID))
 nrow(K27_GE_long_group_plot_spearman_before_Rev)/8
 length(unique(K27_GE_long_group_plot_spearman_before_Rev$ensembl_gene_id))
-# 443 unique genes before reverted intersection (spearman). 596 enhancers.
 ```
-
 #Add 50kb to intersect CTCF peaks with the H3K27ac peaks
 ```{r}
 K27_GE_long_group_coordinates <- inner_join(K27_GE_long_group_plot_pearson, location, by="loc_ID")
@@ -215,98 +210,42 @@ K27_GE_long_group_coordinates_right <- K27_GE_long_group_coordinates %>% dplyr::
 K27_GE_long_group_coordinates_left_export <- K27_GE_long_group_coordinates_left %>% dplyr::select("chrom", "new_start", "new_end", "loc_ID", "query_ID", "symbol") %>% unique()
 K27_GE_long_group_coordinates_right_export <- K27_GE_long_group_coordinates_right %>% dplyr::select("chrom", "new_start", "new_end", "loc_ID", "query_ID", "symbol") %>% unique()
 
-write.table(K27_GE_long_group_coordinates_left_export, "5_Correlation_GRE_identification/5.2_CTCF_intersection/220701_8reps_H3K27ac_left_non_intersect.bed", quote=F, row.names = F, sep="\t")
-write.table(K27_GE_long_group_coordinates_right_export, "5_Correlation_GRE_identification/5.2_CTCF_intersection/220701_8reps_H3K27ac_right_non_intersect.bed", quote=F, row.names=F, sep="\t")
+write.table(K27_GE_long_group_coordinates_left_export, "results/Epigenome_analysis/H3K27ac_left_non_intersect.bed", quote=F, row.names = F, sep="\t")
+write.table(K27_GE_long_group_coordinates_right_export, "results/Epigenome_analysis/H3K27ac_right_non_intersect.bed", quote=F, row.names=F, sep="\t")
 
 #From here, intersect the CTCF peaks with the exported H3K27ac regions using BEDtools (command line)
 ```
+
 # prepare the CTCF files - separate by motif-orientation.
 ```{r}
 #load the motif-discovery file of CTCF motifs in mm10 genome by FIMO
-FIMO_CTCF <- read.delim("5_Correlation_GRE_identification/5.2_CTCF_intersection/220209_fimo_whole_mm10_genome_CTCFscan.tsv", sep="\t")
+FIMO_CTCF <- read.delim("data/fimo_mm10_genome_CTCFscan.tsv", sep="\t")
 
-FIMO_CTCF_plus <- FIMO_CTCF %>% dplyr::filter(strand=="+")
-FIMO_CTCF_minus <- FIMO_CTCF %>% dplyr::filter(strand=="-")
+FIMO_CTCF_plus_bed <- FIMO_CTCF %>% dplyr::filter(strand=="+") %>% dplyr::select("chrom"="sequence_name", "start", "end"="stop", "strand")
+FIMO_CTCF_minus_bed <- FIMO_CTCF %>% dplyr::filter(strand=="-") %>% dplyr::select("chrom"="sequence_name", "start", "end"="stop", "strand")
 
-write.table(FIMO_CTCF_plus, "5_Correlation_GRE_identification/5.2_CTCF_intersection/220701_fimo_whole_mm10_genome_CTCF_plus.txt", quote=F, sep="\t")
-write.table(FIMO_CTCF_minus, "5_Correlation_GRE_identification/5.2_CTCF_intersection/220701_fimo_whole_mm10_genome_CTCF_minus.txt", quote=F, sep="\t")
-
-FIMO_CTCF_minus_bed <- FIMO_CTCF_minus %>% dplyr::select("chrom"="sequence_name", "start", "end"="stop", "strand")
-FIMO_CTCF_plus_bed <- FIMO_CTCF_plus %>% dplyr::select("chrom"="sequence_name", "start", "end"="stop", "strand")
-
-write.table(FIMO_CTCF_plus_bed, "5_Correlation_GRE_identification/5.2_CTCF_intersection/220701_fimo_whole_mm10_genome_CTCF_plus.bed", quote=F,
-         row.names = F, sep="\t")
-write.table(FIMO_CTCF_minus_bed, "5_Correlation_GRE_identification/5.2_CTCF_intersection/220701_fimo_whole_mm10_genome_CTCF_minus.bed", quote=F,
-        row.names = F, sep="\t")
+write.table(FIMO_CTCF_plus_bed, "results/Epigenome_analysis/fimo_mm10_genome_CTCF_plus.bed", quote=F, row.names = F, sep="\t")
+write.table(FIMO_CTCF_minus_bed, "results/Epigenome_analysis/fimo_mm10_genome_CTCF_minus.bed", quote=F, row.names = F, sep="\t")
 ```
 
-# Do not run this, for documentation purposes only
-```{bash, eval=F}
-cd "/Users/christian.som/OneDrive - KI.SE/OneDrive - Karolinska Institutet/DATA_PhD/Estrogen_Receptor/ChIP_Seq/220124_Fig5_epigenome_new_analysis/220621_REANALYSE/"
-CTCF_path="5_Correlation_GRE_identification/5.2_CTCF_intersection"
+###################################################################################################
 
+HERE, RUN THE SHELL SCRIPT "Epigenome_06.03_CTCF_script_bedtools_enh_intersect.sh"
 
+###################################################################################################
 
-# this analysis finds diff. acetylated enhancer with CTCF closeby which are minus oriented of gene (left) - enhancer(right) pairs or
-# plus oriented for gene (right) - enhancer (left) pairs
-
-bedtools intersect -wa -a ${CTCF_path}/PEAK_CALLING/CTCF_consens_reps.bed \
--b ${CTCF_path}/220701_fimo_whole_mm10_genome_CTCF_minus.bed \
-> ${CTCF_path}/220701_CTCF_minus_peaks.bed
-
-bedtools intersect -wa -a ${CTCF_path}/PEAK_CALLING/CTCF_consens_reps.bed \
--b ${CTCF_path}/220701_fimo_whole_mm10_genome_CTCF_plus.bed \
-> ${CTCF_path}/220701_CTCF_plus_peaks.bed
-
-bedtools intersect -wa -a ${CTCF_path}/220701_8reps_H3K27ac_left_non_intersect.bed \
--b ${CTCF_path}/220701_CTCF_minus_peaks.bed \
-> ${CTCF_path}/220701_8rep_H3K27ac_left_CTCF.intersect.canon.bed
-
-bedtools intersect -wa -a ${CTCF_path}/220701_8reps_H3K27ac_right_non_intersect.bed \
--b ${CTCF_path}/220701_CTCF_plus_peaks.bed \
-> ${CTCF_path}/220701_8rep_H3K27ac_right_CTCF.intersect.canon.bed
-
-## Some entries have duplicate entries because they have multiple CTCF peaks in it. Deduplicate the rows with awk.
-awk '!seen[$4]++'  ${CTCF_path}/220701_8rep_H3K27ac_left_CTCF.intersect.canon.bed > ${CTCF_path}/220701_8rep_H3K27ac_left_CTCF.intersect.canon.uniq.bed
-awk '!seen[$4]++'  ${CTCF_path}/220701_8rep_H3K27ac_right_CTCF.intersect.canon.bed > ${CTCF_path}/220701_8rep_H3K27ac_right_CTCF.intersect.canon.uniq.bed
-
-
-
-# this analysis finds diff. acetylated enhancer with CTCF closeby which are plus oriented of gene (left) - enhancer(right) pairs or
-# minus oriented for gene (right) - enhancer (left) pairs. THIS IS LESS LIKELY TO OCCUR, BUT STILL HAPPENS.
-
-
-bedtools intersect -wa -a ${CTCF_path}/220701_8reps_H3K27ac_left_non_intersect.bed \
--b ${CTCF_path}/220701_CTCF_plus_peaks.bed \
-> ${CTCF_path}/220701_8rep_H3K27ac_left_CTCF.intersect.noncanon.bed
-
-bedtools intersect -wa -a ${CTCF_path}/220701_8reps_H3K27ac_right_non_intersect.bed \
--b ${CTCF_path}/220701_CTCF_minus_peaks.bed \
-> ${CTCF_path}/220701_8rep_H3K27ac_right_CTCF.intersect.noncanon.bed
-
-## Some entries have duplicate entries because they have multiple CTCF peaks in it. Deduplicate the rows with awk.
-# Deduplicating based on the fourth column, so each original enhancer region can get one CTCF peak associated.
-
-awk '!seen[$4]++'  ${CTCF_path}/220701_8rep_H3K27ac_left_CTCF.intersect.noncanon.bed > ${CTCF_path}/220701_8rep_H3K27ac_left_CTCF.intersect.noncanon.uniq.bed
-awk '!seen[$4]++'  ${CTCF_path}/220701_8rep_H3K27ac_right_CTCF.intersect.noncanon.bed > ${CTCF_path}/220701_8rep_H3K27ac_right_CTCF.intersect.noncanon.uniq.bed
-
-# This seems to work! Can re-import the files to further analyze the pairs. The only thing that can be considered to be changed is that the intersect_outwards_orient
-# CTCF peaks are not reported yet; but that can be changed in the bedtools intersect command.
-```
-
-#after BEDTools intersection of H3K27ac enhancers (that havea good correlation with nearby genes) with nearby CTCF peaks, re-import
+#after BEDTools intersection of H3K27ac enhancers (that have a good correlation with nearby genes) with nearby CTCF peaks, re-import
 ```{r}
 library(tidyverse)
 
 names <- c("chrom", "start", "end", "loc_ID", "query_ID", "symbol")
-H3K27ac_left_CTCFx_outwards <- read.delim("5_Correlation_GRE_identification/5.2_CTCF_intersection/220701_8rep_H3K27ac_left_CTCF.intersect.noncanon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "outwards")
+H3K27ac_left_CTCFx_outwards <- read.delim("results/Epigenome_analysis/H3K27ac_left_CTCF.intersect.noncanon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "outwards")
 
-H3K27ac_left_CTCFx <- read.delim("5_Correlation_GRE_identification/5.2_CTCF_intersection/220701_8rep_H3K27ac_left_CTCF.intersect.canon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "canonical")
+H3K27ac_left_CTCFx <- read.delim("results/Epigenome_analysis/H3K27ac_left_CTCF.intersect.canon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "canonical")
 
+H3K27ac_right_CTCFx_outwards <- read.delim("results/Epigenome_analysis/H3K27ac_right_CTCF.intersect.noncanon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "outwards")
 
-H3K27ac_right_CTCFx_outwards <- read.delim("5_Correlation_GRE_identification/5.2_CTCF_intersection/220701_8rep_H3K27ac_right_CTCF.intersect.noncanon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "outwards")
-
-H3K27ac_right_CTCFx <- read.delim("5_Correlation_GRE_identification/5.2_CTCF_intersection/220701_8rep_H3K27ac_right_CTCF.intersect.canon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "canonical")
+H3K27ac_right_CTCFx <- read.delim("results/Epigenome_analysis/H3K27ac_right_CTCF.intersect.canon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "canonical")
 ```
 
 
@@ -314,29 +253,20 @@ H3K27ac_right_CTCFx <- read.delim("5_Correlation_GRE_identification/5.2_CTCF_int
 ```{r}
 H3K27ac_CTCF_intersect <- rbind(H3K27ac_left_CTCFx_outwards, H3K27ac_left_CTCFx, H3K27ac_right_CTCFx_outwards, H3K27ac_right_CTCFx)
 table(H3K27ac_CTCF_intersect$CTCF_pos)
+length(unique(H3K27ac_CTCF_intersect$loc_ID))
 unique_symbols <- unique(H3K27ac_CTCF_intersect$symbol)
 length(unique_symbols)
-# 43 unique genes that underlie potential enhancer-mediated estrogen-dependent regulation
-```
 
-```{r}
-# compare
-library(dplyr)
-mouse_compare <- read.delim("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/211201_Human_MAFLD_datasets/GSE135251/220608_38genes_median_filtering_anno.txt", sep="\t")
-mouse_compare2 <- mouse_compare %>% filter(mouse_symbol %in% unique_symbols)
-mouse_compare2
-# all 38 genes identified with the previous TSS/ genome annotations are still there.
+# 46 unique genes that underlie potential enhancer-mediated estrogen-dependent regulation
 ```
-
 
 #Compare the fold-change values for these sites - in addition to the reads in peaks this gives information about how much these enhancers are changed
 ```{r}
-CDvsHFD_H3K27ac_Diffbind <- read.delim("1_DiffBind_run_220621/220629_diffbind_all_DB_regions_full_table_K27_CD_vs_HFD_broad.txt", header=F) %>%
- mutate(loc_ID = paste0(V1, ".",V2,".",V3), .before = V1)
-#View(CDvsHFD_H3K27ac_Diffbind)
+CDvsHFD_H3K27ac_Diffbind <- readRDS("results/Epigenome_analysis/Diffbind_all_annotated_DB_peaks.rds") $ K27_CDvsHFD %>% 
+ mutate(loc_ID = paste0(seqnames, ".",start,".",end), .before = seqnames)
 
-# These are the enhancers intersected with CTCF. But more informative with foldchanges from Diffbind. The correlations are missing however.
-H3K27ac_CTCF_intersect_log2FC <- inner_join(H3K27ac_CTCF_intersect,CDvsHFD_H3K27ac_Diffbind, by="loc_ID") %>% dplyr::select(1:7,"log2FC"="V9",  "FDR" ="V11")
+# These are the enhancers intersected with CTCF. But more informative with foldchanges from Diffbind. The correlations are not added here.
+H3K27ac_CTCF_intersect_log2FC <- inner_join(H3K27ac_CTCF_intersect,CDvsHFD_H3K27ac_Diffbind, by="loc_ID") %>% dplyr::select(4:8,"log2FC"="V9",  "FDR" ="V11")
 
 
 # Retrieves the unique person corr values from BEFORE the CTCF intersection 
@@ -369,9 +299,9 @@ length(unique(K27_GE_long_group_plot_filt$loc_ID)) # 67 unique enhancers
 # 68 total combinations of location IDs and genes, one enhancer goes for to genes.
 
 
-write.table(K27_GE_long_group_plot_filt, "5_Correlation_GRE_identification/220701_corr_45genes_67enh_toPlot.txt", row.names = F,  quote = F, sep="\t")
+write.table(K27_GE_long_group_plot_filt, "results/Epigenome_analysis/corr_45genes_67enh_toPlot.txt", row.names = F,  quote = F, sep="\t")
 
-write.table(unique(K27_GE_long_group_plot_filt$symbol), "5_Correlation_GRE_identification/220701_corr_45genes_unique_genes.txt", row.names = F,  quote = F, sep="\t")
+#write.table(unique(K27_GE_long_group_plot_filt$symbol), "5_Correlation_GRE_identification/220701_corr_45genes_unique_genes.txt", row.names = F,  quote = F, sep="\t")
 ```
 
 ```{r}
@@ -404,8 +334,7 @@ ggscatter(Acot_filt, x = "H3K27ac", y="Gene_expression", add = "reg.line",
     theme(axis.text = element_text(size=14),
           strip.background = element_rect(colour="black",
                                         fill="white")) +
-    facet_wrap(vars(symbol, loc_ID), scales="free", ncol=4) +
-    ggsave("5_Correlation_GRE_identification/220703_8reps_R_corr_with_ggscatter_Acot_0.75corr.pdf", units="cm", width=25, height=6.5)
+    facet_wrap(vars(symbol, loc_ID), scales="free", ncol=4) 
 
 
 # plot Tead1
@@ -424,8 +353,7 @@ ggscatter(tead1, x = "H3K27ac", y="Gene_expression", add = "reg.line",
     theme(axis.text = element_text(size=14),
           strip.background = element_rect(colour="black",
                                         fill="white")) +
-    facet_wrap(vars(symbol, loc_ID), scales="free", ncol=4) +
-    ggsave("5_Correlation_GRE_identification/220703_8reps_R_corr_with_ggscatter_TEAD1_0.75corr.pdf", units="cm", width=25, height=6.5)
+    facet_wrap(vars(symbol, loc_ID), scales="free", ncol=4) 
 
 	
 	
@@ -445,9 +373,9 @@ ggscatter(Sulf2_also_non_filter_pass, x = "H3K27ac", y="Gene_expression", add = 
     theme(axis.text = element_text(size=14),
           strip.background = element_rect(colour="black",
                                         fill="white")) +
-    facet_wrap(vars(symbol, loc_ID), scales="free", ncol=4) +
-    ggsave("5_Correlation_GRE_identification/220703_8reps_R_corr_with_ggscatter_Sulf2_threeEnhancers.pdf", units="cm", width=20, height=6.5)
+    facet_wrap(vars(symbol, loc_ID), scales="free", ncol=4) 
 ```
+
 # Plot histogram to show in which processes (of the 24 GSEA) the 45 genes fall into.
 ```{r}
 library(clusterProfiler)

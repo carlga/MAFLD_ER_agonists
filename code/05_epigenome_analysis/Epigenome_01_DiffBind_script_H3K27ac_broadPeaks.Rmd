@@ -1,6 +1,6 @@
 ---
 title: 'Hepatoprotective effects of systemic ER activation'
-subtitle: 'BulkRNAseq - Differential expression analysis'
+subtitle: 'ChIPseq/Epigenome genome - Differential binding analysis'
 author: 'Christian Sommerauer & Carlos Gallardo'
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -142,6 +142,8 @@ names(Diffbind_tables$down_DB_peaks) <- names(Diffbind_tables$unfiltered)
 names(Diffbind_bed_files$all_DB_peaks) <- names(Diffbind_tables$unfiltered)
 names(Diffbind_bed_files$up_DB_peaks) <- names(Diffbind_tables$unfiltered)
 names(Diffbind_bed_files$down_DB_peaks) <- names(Diffbind_tables$unfiltered)
+
+saveRDS(Diffbind_tables, "results/Epigenome_analysis/Diffbind_results_FDR_fold.rds")
 
 # Export the bedfiles. These will be used later in the analysis.
 
