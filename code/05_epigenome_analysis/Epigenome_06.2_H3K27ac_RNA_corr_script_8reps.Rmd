@@ -110,8 +110,11 @@ gene_len <- read.table(
   sep = '\t',
   header = TRUE)
 
-TPM <- normalizeData(x=raw_counts, len = gene_len$length, method = "TPM") %>%  tibble::rownames_to_column("ensembl_gene_id")
-TPM <- TPM %>% dplyr::select(ensembl_gene_id, CD_male_1, CD_male_4, HFD_male_2,HFD_male_1,DPN_HFD_male_1, DPN_HFD_male_2, E2_HFD_male_3,E2_HFD_male_4)
+TPM <- normalizeData(x=raw_counts, len = gene_len$length, method = "TPM") %>%
+  tibble::rownames_to_column("ensembl_gene_id")
+
+TPM <- TPM %>%
+  dplyr::select(ensembl_gene_id, CD_male_1, CD_male_4, HFD_male_2,HFD_male_1,DPN_HFD_male_1, DPN_HFD_male_2, E2_HFD_male_3,E2_HFD_male_4)
 TPM <- inner_join(symbol_geneID, TPM, by="ensembl_gene_id")
 
 # We name the mice according to their original mouse number instead of replicate number. 
@@ -119,15 +122,19 @@ TPM <- inner_join(symbol_geneID, TPM, by="ensembl_gene_id")
 
 colnames(TPM) <- c("ensembl_gene_id", "symbol", "CDm2", "CDm9", "HFDm3", "HFDm4","DPN2", "DPN3", "E2_8", "E2_9")
 
-gr_closest_long_anno_closest_genes <- gr_closest_long_anno %>% filter(!query_ID=="closest_ori") %>% dplyr::rename("ensembl_gene_id"="feature")
-# %>% filter(loc_ID %in% rownames(output_function1)) 
+gr_closest_long_anno_closest_genes <- gr_closest_long_anno %>%
+  filter(!query_ID=="closest_ori") %>%
+  dplyr::rename("ensembl_gene_id"="feature")
 
 gr_closest_long_anno_closest_genes <- as.data.frame(gr_closest_long_anno_closest_genes)
 
-TPM_filt <- TPM %>% dplyr::filter(ensembl_gene_id%in%gr_closest_long_anno_closest_genes$ensembl_gene_id)
+TPM_filt <- TPM %>%
+  dplyr::filter(ensembl_gene_id%in%gr_closest_long_anno_closest_genes$ensembl_gene_id)
 
 chrom_TPM <- inner_join(gr_closest_long_anno_closest_genes, TPM_filt, by= "ensembl_gene_id") # 2 entries get missing
-chrom_TPM2 <- chrom_TPM %>% dplyr::select("loc_ID" ,"seqnames", "start", "end", "enha.ID", "query_ID", "symbol", "ensembl_gene_id", "CDm2", "CDm9", "HFDm3", "HFDm4","DPN2", "DPN3", "E2_8", "E2_9")
+
+chrom_TPM2 <- chrom_TPM %>%
+  dplyr::select("loc_ID" ,"seqnames", "start", "end", "enha.ID", "query_ID", "symbol", "ensembl_gene_id", "CDm2", "CDm9", "HFDm3", "HFDm4","DPN2", "DPN3", "E2_8", "E2_9")
 ```
 # IMPORT ENHANCER COUNTS and normalize table
 ```{r}
@@ -149,10 +156,12 @@ View(K27_GE_joined)
 
 ## Subset the enhancer table and put into long format
 ```{r}
-sub_GE.K27_GE_joined <- K27_GE_joined %>% dplyr::select("loc_ID", "query_ID","symbol", "CDm2","CDm9","HFDm3","HFDm4", "DPN2","DPN3","E2_8","E2_9")
+sub_GE.K27_GE_joined <- K27_GE_joined %>%
+  dplyr::select("loc_ID", "query_ID","symbol", "CDm2","CDm9","HFDm3","HFDm4", "DPN2","DPN3","E2_8","E2_9")
 sub_GE.K27_GE_long <- pivot_longer(sub_GE.K27_GE_joined, cols=4:11, values_to = "Gene_expression")
 
-sub.K27_K27_GE_joined <- K27_GE_joined %>% dplyr::select("loc_ID", "query_ID", "ensembl_gene_id","CDm2_K27ac","CDm9_K27ac","HFDm3_K27ac","HFDm4_K27ac", "DPN2_K27ac","DPN3_K27ac","E2_8_K27ac","E2_9_K27ac")
+sub.K27_K27_GE_joined <- K27_GE_joined %>%
+  dplyr::select("loc_ID", "query_ID", "ensembl_gene_id","CDm2_K27ac","CDm9_K27ac","HFDm3_K27ac","HFDm4_K27ac", "DPN2_K27ac","DPN3_K27ac","E2_8_K27ac","E2_9_K27ac")
 sub.K27_K27_GE_long <- pivot_longer(sub.K27_K27_GE_joined, cols=4:11, values_to = "H3K27ac")
 
 K27_GE_long <- cbind(sub_GE.K27_GE_long, sub.K27_K27_GE_long)
@@ -160,8 +169,11 @@ K27_GE_long <- cbind(sub_GE.K27_GE_long, sub.K27_K27_GE_long)
 K27_GE_long_dd <- K27_GE_long[!duplicated(as.list(K27_GE_long))]
 
 # Remove the zeros to not correlate zeros (gives error message - but these genes are removed later anyhow because they are not expressed)
-K27_GE_long_dd <- K27_GE_long_dd %>% group_by(loc_ID, symbol) %>% mutate(filter_zeros = mean(Gene_expression)) %>% filter(filter_zeros > 0) %>% dplyr::select(!filter_zeros)
-nrow(K27_GE_long_dd)/8
+K27_GE_long_dd <- K27_GE_long_dd %>%
+  group_by(loc_ID, symbol) %>%
+  mutate(filter_zeros = mean(Gene_expression)) %>%
+  filter(filter_zeros > 0) %>%
+  dplyr::select(!filter_zeros)
 ```
 
 # Import the reverted gene sets and filter the tables
@@ -173,42 +185,58 @@ K27_GE_long_group <- K27_GE_long_dd %>% group_by(loc_ID, query_ID) %>%
 write.table(K27_GE_long_group, "results/Epigenome_analysis/K27_GE_corr_before_filtering.txt", quote=F, row.names=F, sep="\t")
 
 DEGsets <- readRDS("results/bulkRNAseq_mmus_DEG_sets.rds")
+
 revALL <- DEGsets$gene_id$reverted
 
-K27_GE_long_rev_insect <-  K27_GE_long_group %>% filter(ensembl_gene_id %in% revALL)
+
+K27_GE_long_rev_insect <-  K27_GE_long_group %>%
+  filter(ensembl_gene_id %in% revALL)
 length(unique(K27_GE_long_rev_insect$ensembl_gene_id))
 
 
-K27_GE_long_group_plot_pearson <- K27_GE_long_rev_insect %>% filter(abs(correlation_pearson) > 0.75) %>% group_by(loc_ID, query_ID) %>% mutate(name.ident = paste0(symbol, "_", loc_ID))
-nrow(K27_GE_long_group_plot_pearson)/8 # This gives the number of rows divided by 8 -> unique enhancers (loc_IDs)
-K27_GE_long_group_plot_pearson_revCount <- K27_GE_long_group_plot_pearson %>% mutate(name.ident = paste0(loc_ID, ":", symbol))
+K27_GE_long_group_plot_pearson <- K27_GE_long_rev_insect %>%
+  filter(abs(correlation_pearson) > 0.75) %>%
+  group_by(loc_ID, query_ID) %>%
+  mutate(name.ident = paste0(symbol, "_", loc_ID))
 
-length(unique(K27_GE_long_group_plot_pearson$ensembl_gene_id))
+K27_GE_long_group_plot_pearson_revCount <- K27_GE_long_group_plot_pearson %>%
+  mutate(name.ident = paste0(loc_ID, ":", symbol))
 
-K27_GE_long_group_plot_spearman <- K27_GE_long_rev_insect %>% filter(abs(correlation_spearman) > 0.75) %>% group_by(loc_ID, query_ID) %>% mutate(name.ident = paste0(symbol, "_", loc_ID))
-length(unique(K27_GE_long_group_plot_spearman$ensembl_gene_id))
+K27_GE_long_group_plot_spearman <- K27_GE_long_rev_insect %>%
+  filter(abs(correlation_spearman) > 0.75) %>% group_by(loc_ID, query_ID) %>%
+  mutate(name.ident = paste0(symbol, "_", loc_ID))
 
-K27_GE_long_group_plot_pearson_before_Rev <- K27_GE_long_group %>% filter(abs(correlation_pearson) > 0.75) %>% group_by(loc_ID, query_ID) %>% mutate(name.ident = paste0(symbol, "_", loc_ID))
-nrow(K27_GE_long_group_plot_pearson_before_Rev)/8
-length(unique(K27_GE_long_group_plot_pearson_before_Rev$ensembl_gene_id))
+K27_GE_long_group_plot_pearson_before_Rev <- K27_GE_long_group %>%
+  filter(abs(correlation_pearson) > 0.75) %>% group_by(loc_ID, query_ID) %>%
+  mutate(name.ident = paste0(symbol, "_", loc_ID))
 
 
-K27_GE_long_group_plot_spearman_before_Rev <- K27_GE_long_group %>% filter(abs(correlation_spearman) > 0.75) %>% group_by(loc_ID, query_ID) %>% mutate(name.ident = paste0(symbol, "_", loc_ID))
-nrow(K27_GE_long_group_plot_spearman_before_Rev)/8
-length(unique(K27_GE_long_group_plot_spearman_before_Rev$ensembl_gene_id))
+K27_GE_long_group_plot_spearman_before_Rev <- K27_GE_long_group %>%
+  filter(abs(correlation_spearman) > 0.75) %>% group_by(loc_ID, query_ID) %>%
+  mutate(name.ident = paste0(symbol, "_", loc_ID))
 ```
 #Add 50kb to intersect CTCF peaks with the H3K27ac peaks
 ```{r}
 K27_GE_long_group_coordinates <- inner_join(K27_GE_long_group_plot_pearson, location, by="loc_ID")
 K27_GE_long_group_coordinates$end <- as.integer(K27_GE_long_group_coordinates$end)
 
-K27_GE_long_group_coordinates_left <- K27_GE_long_group_coordinates %>% dplyr::filter(query_ID=="closest_left1") %>%
-  mutate(new_end = end+50000) %>% mutate(new_start=start)
-K27_GE_long_group_coordinates_right <- K27_GE_long_group_coordinates %>% dplyr::filter(query_ID=="closest_right1" | query_ID=="closest_right2") %>%
-  mutate(new_start = start-50000) %>% mutate(new_end=end)
+K27_GE_long_group_coordinates_left <- K27_GE_long_group_coordinates %>%
+  dplyr::filter(query_ID=="closest_left1") %>%
+  mutate(new_end = end+50000) %>%
+  mutate(new_start=start)
 
-K27_GE_long_group_coordinates_left_export <- K27_GE_long_group_coordinates_left %>% dplyr::select("chrom", "new_start", "new_end", "loc_ID", "query_ID", "symbol") %>% unique()
-K27_GE_long_group_coordinates_right_export <- K27_GE_long_group_coordinates_right %>% dplyr::select("chrom", "new_start", "new_end", "loc_ID", "query_ID", "symbol") %>% unique()
+K27_GE_long_group_coordinates_right <- K27_GE_long_group_coordinates %>%
+  dplyr::filter(query_ID=="closest_right1" | query_ID=="closest_right2") %>%
+  mutate(new_start = start-50000) %>%
+  mutate(new_end=end)
+
+K27_GE_long_group_coordinates_left_export <- K27_GE_long_group_coordinates_left %>%
+  dplyr::select("chrom", "new_start", "new_end", "loc_ID", "query_ID", "symbol") %>% 
+  unique()
+
+K27_GE_long_group_coordinates_right_export <- K27_GE_long_group_coordinates_right %>%
+  dplyr::select("chrom", "new_start", "new_end", "loc_ID", "query_ID", "symbol") %>%
+  unique()
 
 write.table(K27_GE_long_group_coordinates_left_export, "results/Epigenome_analysis/H3K27ac_left_non_intersect.bed", quote=F, row.names = F, sep="\t")
 write.table(K27_GE_long_group_coordinates_right_export, "results/Epigenome_analysis/H3K27ac_right_non_intersect.bed", quote=F, row.names=F, sep="\t")
@@ -221,8 +249,13 @@ write.table(K27_GE_long_group_coordinates_right_export, "results/Epigenome_analy
 #load the motif-discovery file of CTCF motifs in mm10 genome by FIMO
 FIMO_CTCF <- read.delim("data/fimo_mm10_genome_CTCFscan.tsv", sep="\t")
 
-FIMO_CTCF_plus_bed <- FIMO_CTCF %>% dplyr::filter(strand=="+") %>% dplyr::select("chrom"="sequence_name", "start", "end"="stop", "strand")
-FIMO_CTCF_minus_bed <- FIMO_CTCF %>% dplyr::filter(strand=="-") %>% dplyr::select("chrom"="sequence_name", "start", "end"="stop", "strand")
+FIMO_CTCF_plus_bed <- FIMO_CTCF %>%
+  dplyr::filter(strand=="+") %>%
+  dplyr::select("chrom"="sequence_name", "start", "end"="stop", "strand")
+
+FIMO_CTCF_minus_bed <- FIMO_CTCF %>%
+  dplyr::filter(strand=="-") %>%
+  dplyr::select("chrom"="sequence_name", "start", "end"="stop", "strand")
 
 write.table(FIMO_CTCF_plus_bed, "results/Epigenome_analysis/fimo_mm10_genome_CTCF_plus.bed", quote=F, row.names = F, sep="\t")
 write.table(FIMO_CTCF_minus_bed, "results/Epigenome_analysis/fimo_mm10_genome_CTCF_minus.bed", quote=F, row.names = F, sep="\t")
@@ -262,15 +295,18 @@ length(unique_symbols)
 
 #Compare the fold-change values for these sites - in addition to the reads in peaks this gives information about how much these enhancers are changed
 ```{r}
-CDvsHFD_H3K27ac_Diffbind <- readRDS("results/Epigenome_analysis/Diffbind_all_annotated_DB_peaks.rds") $ K27_CDvsHFD %>% 
- mutate(loc_ID = paste0(seqnames, ".",start,".",end), .before = seqnames)
+CDvsHFD_H3K27ac_Diffbind <- readRDS("results/Epigenome_analysis/Diffbind_results_FDR_fold.rds")$all_DB_peaks$K27_CDvsHFD %>%
+ mutate(loc_ID = paste0(seqnames, ".",start,".",end), .before = seqnames) %>%
+  dplyr::select(loc_ID, Fold, FDR)
 
 # These are the enhancers intersected with CTCF. But more informative with foldchanges from Diffbind. The correlations are not added here.
-H3K27ac_CTCF_intersect_log2FC <- inner_join(H3K27ac_CTCF_intersect,CDvsHFD_H3K27ac_Diffbind, by="loc_ID") %>% dplyr::select(4:8,"log2FC"="V9",  "FDR" ="V11")
-
+H3K27ac_CTCF_intersect_log2FC <- inner_join(H3K27ac_CTCF_intersect,CDvsHFD_H3K27ac_Diffbind, by="loc_ID") 
 
 # Retrieves the unique person corr values from BEFORE the CTCF intersection 
-corr_values <- K27_GE_long_group_plot_pearson %>% ungroup() %>% dplyr::select("loc_ID", "correlation_pearson", "symbol") %>% unique() %>% group_by(symbol)
+corr_values <- K27_GE_long_group_plot_pearson %>%
+  ungroup() %>%
+  dplyr::select("loc_ID", "correlation_pearson", "symbol") %>%
+  unique() %>% group_by(symbol)
 
 # Creates a dataframe between the corr values and log2FCs. This one is the COMPLETE dataframe
 H3K27ac_CTCF_intersect_log2FC_corr <- inner_join(corr_values, H3K27ac_CTCF_intersect_log2FC, by=c("loc_ID", "symbol"))
@@ -278,30 +314,30 @@ duplicated(H3K27ac_CTCF_intersect_log2FC_corr)
 length(unique(H3K27ac_CTCF_intersect_log2FC_corr$symbol))
 
 # This unique ID is necessary to join the data frames in the next section. Otherwise, enhancers that are associated with multiple genes but are only good regarding CTCF peaks with one of the genes due to directionality, will again introduce the genes without CTCF peak.
-H3K27ac_CTCF_intersect_log2FC_corr <- H3K27ac_CTCF_intersect_log2FC_corr %>% mutate(name.ident = paste0(loc_ID, ":", symbol))
-# 45 unique genes.
+H3K27ac_CTCF_intersect_log2FC_corr <- H3K27ac_CTCF_intersect_log2FC_corr %>%
+  mutate(name.ident = paste0(loc_ID, ":", symbol))
 ```
 
 ```{r}
 # To plot, we need the single columns for gene expression and log2FC again.  Note: some enhancers have the same gene associated as closest AND second closest due to multiple 
-K27_GE_long_group_plot_filt <- K27_GE_long_group_plot_pearson %>% group_by(symbol, loc_ID) %>% mutate(name.ident = paste0(loc_ID, ":", symbol)) %>% filter(name.ident%in%H3K27ac_CTCF_intersect_log2FC_corr$name.ident)
+K27_GE_long_group_plot_filt <- K27_GE_long_group_plot_pearson %>%
+  group_by(symbol, loc_ID) %>%
+  mutate(name.ident = paste0(loc_ID, ":", symbol)) %>%
+  filter(name.ident%in%H3K27ac_CTCF_intersect_log2FC_corr$name.ident)
 
 K27_GE_long_group_plot_filt <- K27_GE_long_group_plot_filt[!duplicated(K27_GE_long_group_plot_filt), ]
 length(unique(K27_GE_long_group_plot_filt$symbol))
 
-# The following should yield NA.
+# The following should yield "character(0)"
 setdiff(K27_GE_long_group_plot_filt$symbol, H3K27ac_CTCF_intersect_log2FC_corr$symbol)
 
-length(unique(K27_GE_long_group_plot_filt$symbol)) # 45 unique genes
-nrow(K27_GE_long_group_plot_filt)/8 # 68 enhancer - gene pairs
-length(unique(K27_GE_long_group_plot_filt$loc_ID)) # 67 unique enhancers
+length(unique(K27_GE_long_group_plot_filt$symbol)) # 46 unique genes
+nrow(K27_GE_long_group_plot_filt)/8 # 70 enhancer - gene pairs
+length(unique(K27_GE_long_group_plot_filt$loc_ID)) # 68 unique enhancers
 
 # 68 total combinations of location IDs and genes, one enhancer goes for to genes.
 
-
-write.table(K27_GE_long_group_plot_filt, "results/Epigenome_analysis/corr_45genes_67enh_toPlot.txt", row.names = F,  quote = F, sep="\t")
-
-#write.table(unique(K27_GE_long_group_plot_filt$symbol), "5_Correlation_GRE_identification/220701_corr_45genes_unique_genes.txt", row.names = F,  quote = F, sep="\t")
+write.table(K27_GE_long_group_plot_filt, "results/Epigenome_analysis/corr_46genes_69enh_toPlot.txt", row.names = F,  quote = F, sep="\t")
 ```
 
 ```{r}
@@ -318,8 +354,7 @@ library(ggpubr)
     theme(axis.text = element_text(size=14),
           strip.background = element_rect(colour="black",
                                         fill="white")) +
-    facet_wrap(vars(symbol, loc_ID), scales = "free", ncol=8) +
-    ggsave("5_Correlation_GRE_identification/220703_8reps_R_corr_with_ggscatter_68_CTCF_filtered_0.75corr.pdf", units="cm", width=60, height=55)
+    facet_wrap(vars(symbol, loc_ID), scales = "free", ncol=8) 
   
 Acot_filt <- K27_GE_long_group_plot_filt %>% dplyr::filter(grepl("Acot", symbol))
 ggscatter(Acot_filt, x = "H3K27ac", y="Gene_expression", add = "reg.line",
@@ -340,7 +375,7 @@ ggscatter(Acot_filt, x = "H3K27ac", y="Gene_expression", add = "reg.line",
 # plot Tead1
 tead1 <- K27_GE_long_group %>% dplyr::filter(symbol=="Tead1") %>% filter(!loc_ID=="chr7.112688427.112688827")
 # note: this loc_ID is filtered out because it does not have a CTCF peak closeby (at least not a significant one)
-#tead1_filt <- K27_GE_long_group_plot_filt %>% dplyr::filter(symbol=="Tead1")
+#tead1_filt <- K27_GE_long_group_plot_filt %>% dplyr::filter(symbol=="Tead1")  # Plot this to only show E-G-pairs > 0.75
 ggscatter(tead1, x = "H3K27ac", y="Gene_expression", add = "reg.line",
             shape=21,size=5, fill="name",alpha=0.8,
             # yscale = "log2",
@@ -355,12 +390,10 @@ ggscatter(tead1, x = "H3K27ac", y="Gene_expression", add = "reg.line",
                                         fill="white")) +
     facet_wrap(vars(symbol, loc_ID), scales="free", ncol=4) 
 
-	
-	
 # One enhancer has a correlation of 0.67 and hence does not pass the filter. I think this enhancer is interesting to show, which is why I remove the two enhancers with really poor correlation in the next line, keeping three of five enhancers that we show.
 Sulf2_also_non_filter_pass <- K27_GE_long_group %>% dplyr::filter(symbol=="Sulf2") %>% filter(!loc_ID=="chr2.166125461.166125861")  %>% filter(!loc_ID=="chr2.166676963.166677363")
 Sulf2_all_enhancers <- K27_GE_long_group %>% dplyr::filter(symbol=="Sulf2")
-#Sulf2 <- K27_GE_long_group_plot_filt %>% dplyr::filter(symbol=="Sulf2")
+#Sulf2 <- K27_GE_long_group_plot_filt %>% dplyr::filter(symbol=="Sulf2")  # Plot this to only show E-G-pairs > 0.75
 ggscatter(Sulf2_also_non_filter_pass, x = "H3K27ac", y="Gene_expression", add = "reg.line",
             shape=21,size=5, fill="name",alpha=0.8,
             # yscale = "log2",
@@ -379,27 +412,21 @@ ggscatter(Sulf2_also_non_filter_pass, x = "H3K27ac", y="Gene_expression", add = 
 # Plot histogram to show in which processes (of the 24 GSEA) the 45 genes fall into.
 ```{r}
 library(clusterProfiler)
-symbols <- K27_GE_long_group_plot_filt$symbol 
-reactome_pathways <- read.gmt("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/analysis_files_archive_210826/210826/curated_resources/210701_c2.cp.reactome.v7.4.symbols.gmt")
-reactome_pathways2 <- read.gmt("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/analysis_files_archive_210826/210826/curated_resources/reactome_pathways_geneSymbols.gmt")
+symbols <- K27_GE_long_group_plot_filt$symbol %>% unique()
 
-symbols_caps <- unique(toupper(symbols))
-intersect_pathways_symbols <- reactome_pathways %>% filter(gene %in% symbols_caps)
-counts <- as.data.frame(table(intersect_pathways_symbols)) %>% filter(Freq > 0)
+reactome_pathways <- readRDS("results/bulkRNAseq_mmus_GSEA_reactome_cluster_sets.rds")
+reactome_pathways.2 <- as.data.frame(do.call(cbind, test))
 
-
-reactome_pathways3 <- read.table("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/analysis_files_archive_210826/210826/Tables/GSEA_cl_reactome_genesets_wide.txt", sep="\t", header=T)
-
-reactome_pathways3.1 <- pivot_longer(reactome_pathways3, cols=1:24)
-intersect_pathways_symbols <- reactome_pathways3.1 %>% filter(value %in% symbols)
-#intersect_pathways_symbols_counts <- as.data.frame(table(intersect_pathways_symbols$name))
+reactome_pathways.long <- pivot_longer(reactome_pathways.2, cols=1:24)
+intersect_pathways_symbols <- reactome_pathways.long %>% filter(value %in% symbols) %>% unique()
+intersect_pathways_symbols_counts <- as.data.frame(table(intersect_pathways_symbols$name))
 
 ggplot(intersect_pathways_symbols) +
   geom_histogram(aes(x=name), stat="count", fill="black") +
   theme_classic() +
   theme(axis.text.x = element_text(angle=90, hjust = 0.95, vjust = .5)) +
   xlab("") +
-  scale_y_continuous(limits = c(0,10), breaks=c(0,2,4,6,8,10)) 
+  scale_y_continuous(limits = c(), breaks=c(0,2,4,6,8,10)) 
 ```
 
 
