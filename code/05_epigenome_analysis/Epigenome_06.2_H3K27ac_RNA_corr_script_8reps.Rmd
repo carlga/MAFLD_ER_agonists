@@ -1,46 +1,31 @@
-```{r, setup, include=FALSE}
-knitr::opts_knit$set(root.dir = '/Users/christian.som/OneDrive - KI.SE/OneDrive - Karolinska Institutet/DATA_PhD/Estrogen_Receptor/ChIP_Seq/220124_Fig5_epigenome_new_analysis/220621_REANALYSE/')
+---
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'ChIPseq/Epigenome genome - Enhancer-gene pair analysis'
+author: 'Christian Sommerauer & Carlos Gallardo'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-1):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
 ```
 
 ```{r}
 library(tidyverse)
 ```
 
-# Use BEDOPS suite to determine the closest TSS to the enhancer sites. Run this in terminal, it doesn't matter in which folder you are if the correct paths are set. Requires BEDOPS and bedtools.
-```{bash, eval=F}
-## Determine the closest 3 TSSs (1 left, 2 right) of the differentially acetylated enhancers.
-
-## Determine the closest 3 TSSs (1 left, 2 right) of the differentially acetylated enhancers.
-
-cd "/Users/christian.som/OneDrive - KI.SE/OneDrive - Karolinska Institutet/DATA_PhD/Estrogen_Receptor/ChIP_Seq/220124_Fig5_epigenome_new_analysis/220621_REANALYSE/"
-file_path="2.1_Peak_distribution_anno"
-out_path="5_Correlation_GRE_identification/5.1_bedops_closest"
-
-sort-bed ${file_path}/220629_HFDup_promoters_13220_Mart-anno_unique_shortestDistance.bed > ${file_path}/220629_HFDup_promoters_13220_Mart-anno_unique_shortestDistance.sort.bed
-
-## creates the closest TSS right
-closest-features --no-overlaps ${file_path}/220629_enhancers_allDB_1816_Mart-anno.bed \
- ${file_path}/220629_HFDup_promoters_13220_Mart-anno_unique_shortestDistance.sort.bed | awk -F'|' '{print $3}' - > ${out_path}/220629_closest_right_DB_enha.bed
-
-## creates the 2nd closest TSS right
-closest-features --no-overlaps ${out_path}/220629_closest_right_DB_enha.bed \
-  ${file_path}/220629_HFDup_promoters_13220_Mart-anno_unique_shortestDistance.sort.bed | awk -F'|' '{print $3}' - >  ${out_path}/220629_2ndclosest_right_DB_enha.bed
-
-## creates the closest TSS left
-closest-features --no-overlaps ${file_path}/220629_enhancers_allDB_1816_Mart-anno.bed \
- ${file_path}/220629_HFDup_promoters_13220_Mart-anno_unique_shortestDistance.sort.bed | awk -F'|' '{print $2}' - > ${out_path}/220629_closest_left_DB_enha.bed
-
-
-paste -d'|' ${file_path}/220629_enhancers_allDB_1816_Mart-anno.bed \
-    ${out_path}/220629_closest_left_DB_enha.bed \
-    ${out_path}/220629_closest_right_DB_enha.bed ${out_path}/220629_2ndclosest_right_DB_enha.bed \
-    > ${out_path}/220629_origin_closest1_left_closest_1_2_right.bed
-```
+# Use BEDOPS suite to determine the closest TSS to the enhancer sites. Run this in terminal, may adjust paths. Requires BEDOPS and bedtools.
 
 ```{r}
 #Import the closest genes as determined by 
-closest <- read.delim("5_Correlation_GRE_identification/5.1_bedops_closest/220629_origin_closest1_left_closest_1_2_right.bed", header=F)
-
+closest <- read.delim("results/Epigenome_analysis/origin_closest1_left_closest_1_2_right.bed", header=F)
 enhancer_ID <- c(1:1816)
 # Row 738 has an NA in several columns (including V8), remove this one as it causes issues downstream. 
 closest2 <- closest %>%
@@ -106,10 +91,32 @@ gr_closest_long_anno <- as.data.frame(gr_closest_long_anno)
 # Import the gene expression data
 ```{r}
 getwd()
-TPM <- read.delim("5_Correlation_GRE_identification/5.1_bedops_closest/220609_TPM_ordered_df.txt")
-TPM <- TPM %>% dplyr::select(1,2, 11,14,15, 16, 23,24, 29,30)
-# We will name the mice according to their original mouse number instead of replicate number. 
+
+source("code/00_helper_functions.R")
+symbol_geneID <- read.delim("data/raw_counts_mmus_symbol_geneID.txt")
+
+raw_counts <- read.table(
+  file = 'data/bulkRNAseq_mmus_rawcounts.tsv',
+  stringsAsFactors = FALSE,
+  sep = '\t',
+  header = TRUE) %>%
+  dplyr::select(-PPT_HFD_male_4) %>% 
+  tibble::column_to_rownames('geneID') %>% 
+  as.matrix() 
+
+gene_len <- read.table(
+  file = 'data/bulkRNAseq_mmus_gene_lengths.tsv',
+  stringsAsFactors = FALSE,
+  sep = '\t',
+  header = TRUE)
+
+TPM <- normalizeData(x=raw_counts, len = gene_len$length, method = "TPM") %>%  tibble::rownames_to_column("ensembl_gene_id")
+TPM <- TPM %>% dplyr::select(ensembl_gene_id, CD_male_1, CD_male_4, HFD_male_2,HFD_male_1,DPN_HFD_male_1, DPN_HFD_male_2, E2_HFD_male_3,E2_HFD_male_4)
+TPM <- inner_join(symbol_geneID, TPM, by="ensembl_gene_id")
+
+# We name the mice according to their original mouse number instead of replicate number. 
 # CD2 and CD9 correspond to CDm1 and CDm4, HFD3 and HFD4 correspond to HFDm2 and HFDm1, DPN2 and DPN3 correspond to DPN1 and DPN2 and E2_8/E2_9 correspond to E2_3 and E2_4.
+
 colnames(TPM) <- c("ensembl_gene_id", "symbol", "CDm2", "CDm9", "HFDm3", "HFDm4","DPN2", "DPN3", "E2_8", "E2_9")
 
 gr_closest_long_anno_closest_genes <- gr_closest_long_anno %>% filter(!query_ID=="closest_ori") %>% dplyr::rename("ensembl_gene_id"="feature")
@@ -127,7 +134,7 @@ chrom_TPM2 <- chrom_TPM %>% dplyr::select("loc_ID" ,"seqnames", "start", "end", 
 library(dplyr)
 library(tidyr)
 
-counts_enha <- read.delim("3_Quantification_reads_in_peaks/Downloaded_from_uppmax/220630_diffbind_HFDall_enhancers1816_H3K27ac.clean.readCount", header=T) %>% tibble::column_to_rownames("Geneid")
+counts_enha <- read.delim("results/Epigenome_analysis/diffbind_enhancers_1816_H3K27ac.clean.readCount", header=T) %>% tibble::column_to_rownames("Geneid")
 names(counts_enha) <- c("CDm2_K27ac","CDm9_K27ac","HFDm3_K27ac","HFDm4_K27ac", "DPN2_K27ac","DPN3_K27ac","E2_8_K27ac","E2_9_K27ac")
 colsums_enha <- colSums(counts_enha[,])
 
@@ -163,14 +170,9 @@ K27_GE_long_group <- K27_GE_long_dd %>% group_by(loc_ID, query_ID) %>%
   mutate(correlation_pearson = cor(Gene_expression, H3K27ac, method="pearson")) %>%
   mutate(correlation_spearman = cor(Gene_expression, H3K27ac, method="spearman"))
 
-write.table(K27_GE_long_group, "220704_K27_GE_corr_before_filtering.txt", quote=F, row.names=F, sep="\t")
-#load the reverted gene sets
-# revUP <- read.delim("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/Results/DEGs/filtered/220204_up_reverted_Genes_symbol_ensembl_CS.txt", header=T)
-# revDOWN <- read.delim("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/Results/DEGs/filtered/220204_down_reverted_Genes_symbol_ensembl_CS.txt", header=T)
-# revALL <- read.delim("/Users/christian.som/Dropbox/MAFLD_Figure_drafts/Results/DEGs/filtered/220204_all_reverted_Genes_symbol_ensembl_CS.txt", header=T)
-# nrow(revALL)
+write.table(K27_GE_long_group, "results/Epigenome_analysis/K27_GE_corr_before_filtering.txt", quote=F, row.names=F, sep="\t")
 
-DEGsets <- readRDS("/Users/christian.som/Documents/GitHub/MAFLD_ER_agonists/results/bulkRNAseq_mmus_DEG_sets.rds")
+DEGsets <- readRDS("results/bulkRNAseq_mmus_DEG_sets.rds")
 revALL <- DEGsets$gene_id$reverted
 
 K27_GE_long_rev_insect <-  K27_GE_long_group %>% filter(ensembl_gene_id %in% revALL)
@@ -469,8 +471,7 @@ ggplot(intersect_pathways_symbols) +
   theme_classic() +
   theme(axis.text.x = element_text(angle=90, hjust = 0.95, vjust = .5)) +
   xlab("") +
-  scale_y_continuous(limits = c(0,10), breaks=c(0,2,4,6,8,10)) +
-  ggsave("5_Correlation_GRE_identification/220703_hist_GSEA_terms.pdf", height=10, width=15, units="cm")
+  scale_y_continuous(limits = c(0,10), breaks=c(0,2,4,6,8,10)) 
 ```
 
 
@@ -509,6 +510,5 @@ View(as.data.frame(GO_BP))
     theme_classic() +
     theme(text=element_text(size = 18)) +
     ggtitle("") + 
-    xlab("") + 
-    ggsave("220704_45_CTCF_revDEG_GO_BP.pdf", width = 20, height = 10, units = "cm")
+    xlab("") 
 ```

@@ -1,8 +1,11 @@
+#!/usr/bin/env zsh
 
 
-cd "/Users/christian.som/OneDrive - KI.SE/OneDrive - Karolinska Institutet/DATA_PhD/Estrogen_Receptor/ChIP_Seq/220124_Fig5_epigenome_new_analysis/220621_REANALYSE/"
-bed_path=2.1_Peak_distribution_anno
-quant_path=3_Quantification_reads_in_peaks
+# Copy this into your terminal (in ~GitHub/MAFLD_ER_agonists/code/05_epigenome_analysis folder)
+# or run sh ~GitHub/MAFLD_ER_agonists/code/05_epigenome_analysis/Epigenome_04.1_generate_saf_from_bed_script.sh
 
-awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${bed_path}/220629_promoters_allDB_182_Mart-anno_unique_shortestDistance.bed > ${quant_path}/220629_allDB_promoters_182_shortestDistance.saf
-awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${bed_path}/220629_enhancers_allDB_1816_Mart-anno.bed > ${quant_path}/220629_enhancers_allDB_1816_Mart-anno.saf
+
+bed_path="../../results/Epigenome_analysis"
+
+awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${bed_path}/promoters_allDB_182_anno.bed > ${bed_path}/promoters_allDB_182.saf
+awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${bed_path}/enhancers_allDB_1816_anno.bed > ${bed_path}/enhancers_allDB_1816.saf

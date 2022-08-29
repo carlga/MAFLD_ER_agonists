@@ -1,8 +1,7 @@
-#220630: computematrices with DeepTools for all promoters and enhancers we identified. For promoters, each TSS has only one peak. For enhancers and promoters, the scaffolds were removed.
+#computematrices with DeepTools for all promoters and enhancers we identified. For promoters, each TSS has only one peak. For enhancers and promoters, the scaffolds were removed.
 
 
-bigwig_path="/Users/christian.som/220124_Fig5_epigenome_new_analysis/bigwig_files"
-cd "/Users/christian.som/OneDrive - KI.SE/OneDrive - Karolinska Institutet/DATA_PhD/Estrogen_Receptor/ChIP_Seq/220124_Fig5_epigenome_new_analysis/220621_REANALYSE/"
+bigwig_path="bigwig_files"
 prom_enh_path=2.1_Peak_distribution_anno
 out_path=4_Metaplots_deeptools
  #For the promoters

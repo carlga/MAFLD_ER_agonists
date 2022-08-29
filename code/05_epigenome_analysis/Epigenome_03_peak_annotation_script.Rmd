@@ -1,6 +1,22 @@
-```{r, setup, include=FALSE}
-knitr::opts_knit$set(root.dir = '/Users/christian.som/OneDrive - KI.SE/OneDrive - Karolinska Institutet/DATA_PhD/Estrogen_Receptor/ChIP_Seq/220124_Fig5_epigenome_new_analysis/220621_REANALYSE/2_Demarcating_enhancers_promoters')
+---
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'ChIPseq/Epigenome genome - Annotation of Peak files and feature examination'
+author: 'Christian Sommerauer & Carlos Gallardo'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-1):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
 ```
+
 
 # Load the enhancers and promoters which were demarcated using various histone modifications. Then annotate these features and export them as tables. For promoters, only one peak per gene, the closest one, is permitted, multiple TSS are disregaded.
 ```{r}
@@ -11,16 +27,16 @@ library("org.Mm.eg.db")
 library("biomaRt")
 library("tidyverse")
 
-promoters_genomewide <- read.delim("Final_promoter_files/prom.3.genomewide.FINAL.H3K4me3_CD_HFD_merge.bed", header=F)
-enhancers_genomewide <- read.delim("Final_enhancer_files/enh.5.FINAL.genomewide.H3K27ac_all_xxx_H3K4me1_minus_K4me3.bed", header=F)
-enhancers_allDB <- read.delim("Final_enhancer_files/enh.5.FINAL.H3K27ac_broad_CDHFD_DB_xxx_H3K4me1_minus_me3.sort.bed", header=F)
-promoters_allDB <- read.delim("Final_promoter_files/prom.8.FINAL.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD_HFD.bed", header=F)
-enhancers_HFDup <- read.delim("Final_enhancer_files/enh.7.HFDup.FINAL.H3K27ac_broad_CDHFD_DB_xxx_H3K4me1_minus_me3.sort.bed", header=F)
-promoters_HFDup <- read.delim("Final_promoter_files/prom.16.FINAL.HFDup.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD_HFD.bed", header=F)
-enhancers_HFDdown <- read.delim("Final_enhancer_files/enh.9.HFDdown.FINAL.H3K27ac_broad_CDHFD_DB_xxx_H3K4me1_minus_me3.sort.bed", header=F)
-promoters_HFDdown <- read.delim("Final_promoter_files/prom.24.FINAL.HFDdown.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD_HFD.bed", header=F)
+import_list <- list(
+promoters_genomewide <- read.delim("results/Epigenome_analysis/Final_promoter_files/prom.3.genomewide.FINAL.H3K4me3_CD_HFD_merge.bed", header=F),
+enhancers_genomewide <- read.delim("results/Epigenome_analysis/Final_enhancer_files/enh.5.FINAL.genomewide.H3K27ac_all_xxx_H3K4me1_minus_K4me3.bed", header=F),
+enhancers_allDB <- read.delim("results/Epigenome_analysis/Final_enhancer_files/enh.5.FINAL.H3K27ac_broad_CDHFD_DB_xxx_H3K4me1_minus_me3.sort.bed", header=F),
+promoters_allDB <- read.delim("results/Epigenome_analysis/Final_promoter_files/prom.8.FINAL.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD_HFD.bed", header=F),
+enhancers_HFDup <- read.delim("results/Epigenome_analysis/Final_enhancer_files/enh.7.HFDup.FINAL.H3K27ac_broad_CDHFD_DB_xxx_H3K4me1_minus_me3.sort.bed", header=F),
+promoters_HFDup <- read.delim("results/Epigenome_analysis/Final_promoter_files/prom.16.FINAL.HFDup.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD_HFD.bed", header=F),
+enhancers_HFDdown <- read.delim("results/Epigenome_analysis/Final_enhancer_files/enh.9.HFDdown.FINAL.H3K27ac_broad_CDHFD_DB_xxx_H3K4me1_minus_me3.sort.bed", header=F),
+promoters_HFDdown <- read.delim("results/Epigenome_analysis/Final_promoter_files/prom.24.FINAL.HFDdown.H3K27ac_broad_CDHFD_DB_xxx_H3K4me3_CD_HFD.bed", header=F))
 
-import_list <- list(promoters_genomewide, enhancers_genomewide, enhancers_allDB, promoters_allDB, enhancers_HFDup, promoters_HFDup, enhancers_HFDdown, promoters_HFDdown)
 names(import_list) <- c("promoters_genomewide", "enhancers_genomewide", "enhancers_allDB", "promoters_allDB", "enhancers_HFDup", "promoters_HFDup", "enhancers_HFDdown", "promoters_HFDdown")
 
 ##Filter out all locations which are NOT on a chromosome. 
@@ -60,110 +76,78 @@ object3 <- as.data.frame(object3)
 peaks_annotated[[i]] <- object3
 } 
 
-edited_path <- "/Users/christian.som/OneDrive - KI.SE/OneDrive - Karolinska Institutet/DATA_PhD/Estrogen_Receptor/ChIP_Seq/220124_Fig5_epigenome_new_analysis/220621_REANALYSE/2.1_Peak_distribution_anno/"
-## The list looks fine, export the data.frames. To identify the files easier, also put the rownames into the name.
-for (i in names(peaks_annotated)) { 
-saveme <-  peaks_annotated[[i]]
-# Note: some peaks get several genes annotated, which is why there are a few more rows in the annotated than the input files. Use unique() to get the number of the enhancers/promoters, not the number of annotated genes
-write.table(saveme, paste0(edited_path, "/220629_", i, "_", as.character(length(unique(saveme$peak))), "_", "Mart-anno.txt") ,quote = F, row.names = F, sep="\t")
-}
-
 # For the promoters, remove the duplicated gene names and only allow the closest peak to a given gene. The annotation does not take multiple TSS per gene into consideration.
+
 library(data.table)
-promoters_genomewide_unique_TSS_perPeak <- peaks_annotated[["promoters_genomewide"]] %>% dplyr::group_by(feature)
-promoters_genomewide_unique_TSS_perPeak <- setDT(promoters_genomewide_unique_TSS_perPeak)[order(shortestDistance), head(.SD, 1) , feature]
-write.table(promoters_genomewide_unique_TSS_perPeak, paste0(edited_path, "/220629_promoters_genomewide_",length(unique(promoters_genomewide_unique_TSS_perPeak$peak)),"_Mart-anno_unique_shortestDistance.txt"),quote = F, row.names = F, sep="\t")
 
-promoters_HFDdown_unique_TSS_perPeak <- peaks_annotated[["promoters_HFDdown"]] %>% dplyr::group_by(feature)
-promoters_HFDdown_unique_TSS_perPeak <- setDT(promoters_HFDdown_unique_TSS_perPeak)[order(shortestDistance), head(.SD, 1) , feature]
-write.table(promoters_HFDdown_unique_TSS_perPeak, paste0(edited_path, "/220629_HFDdown_promoters_", length(unique(promoters_HFDdown_unique_TSS_perPeak$peak)), "_Mart-anno_unique_shortestDistance.txt"),quote = F, row.names = F, sep="\t")
+peaks_annotated[["promoters_genomewide"]] <- peaks_annotated[["promoters_genomewide"]] %>% dplyr::group_by(feature)
+peaks_annotated[["promoters_genomewide"]] <- setDT(peaks_annotated[["promoters_genomewide"]])[order(shortestDistance), head(.SD, 1) , feature]
 
-promoters_HFDup_unique_TSS_perPeak <- peaks_annotated[["promoters_HFDup"]] %>% dplyr::group_by(feature)
-promoters_HFDup_unique_TSS_perPeak <- setDT(promoters_HFDup_unique_TSS_perPeak)[order(shortestDistance), head(.SD, 1) , feature]
-write.table(promoters_HFDup_unique_TSS_perPeak, paste0(edited_path, "/220629_HFDup_promoters_", length(unique(promoters_HFDup_unique_TSS_perPeak$peak)),"_Mart-anno_unique_shortestDistance.txt"),quote = F, row.names = F, sep="\t")
+peaks_annotated[["promoters_HFDdown"]] <- peaks_annotated[["promoters_HFDdown"]] %>% dplyr::group_by(feature)
+peaks_annotated[["promoters_HFDdown"]] <- setDT(peaks_annotated[["promoters_HFDdown"]])[order(shortestDistance), head(.SD, 1) , feature]
 
-promoters_allDB_unique_TSS_perPeak <- peaks_annotated[["promoters_allDB"]] %>% dplyr::group_by(feature)
-promoters_allDB_unique_TSS_perPeak <- setDT(promoters_allDB_unique_TSS_perPeak)[order(shortestDistance), head(.SD, 1) , feature]
-write.table(promoters_allDB_unique_TSS_perPeak, paste0(edited_path, "/220629_promoters_allDB_",length(unique(promoters_allDB_unique_TSS_perPeak$peak)), "_Mart-anno_unique_shortestDistance.txt"),quote = F, row.names = F, sep="\t")
+peaks_annotated[["promoters_HFDup"]] <- peaks_annotated[["promoters_HFDup"]] %>% dplyr::group_by(feature)
+peaks_annotated[["promoters_HFDup"]] <- setDT(peaks_annotated[["promoters_HFDup"]])[order(shortestDistance), head(.SD, 1) , feature]
+
+peaks_annotated[["promoters_allDB"]] <- peaks_annotated[["promoters_allDB"]] %>% dplyr::group_by(feature)
+peaks_annotated[["promoters_allDB"]] <- setDT(peaks_annotated[["promoters_allDB"]])[order(shortestDistance), head(.SD, 1) , feature]
+
+saveRDS(peaks_annotated, "results/Epigenome_analysis/annotated_diffbind_and_genomewide_promoters_enhancers.rds")
 ```
 
-# re-import, do not need to re-run section above.
+# Export the bedfiles, which are required for further analyses
 ```{r}
-edited_path <- "/Users/christian.som/OneDrive - KI.SE/OneDrive - Karolinska Institutet/DATA_PhD/Estrogen_Receptor/ChIP_Seq/220124_Fig5_epigenome_new_analysis/220621_REANALYSE/2.1_Peak_distribution_anno"
+peaks_annotated_bed <- list()
+for (i in names(peaks_annotated)) {
 
-promoters_allDB_anno <- read.delim(paste0(edited_path,"/220629_promoters_allDB_182_Mart-anno_unique_shortestDistance.txt"))
-enhancers_allDB_anno <- read.delim(paste0(edited_path,"/220629_enhancers_allDB_1816_Mart-anno.txt"))
-promoters_genomewide_anno <- read.delim(paste0(edited_path,"/220629_promoters_genomewide_13220_Mart-anno_unique_shortestDistance.txt"))
-enhancers_genomewide_anno <- read.delim(paste0(edited_path,"/220629_enhancers_genomewide_28392_Mart-anno.txt"))
-promoters_HFDup_anno <- read.delim(paste0(edited_path,"/220629_HFDup_promoters_104_Mart-anno_unique_shortestDistance.txt"))
-enhancers_HFDup_anno <- read.delim(paste0(edited_path,"/220629_enhancers_HFDup_1211_Mart-anno.txt"))
-promoters_HFDdown_anno <- read.delim(paste0(edited_path,"/220629_HFDdown_promoters_78_Mart-anno_unique_shortestDistance.txt"))
-enhancers_HFDdown_anno <- read.delim(paste0(edited_path,"/220629_enhancers_HFDdown_605_Mart-anno.txt"))
-
-# Export some of the txt files in .bed format, as this is required a bit later.
-promoters_allDB_anno_bed <- promoters_allDB_anno %>% dplyr::select("chrom"=seqnames, start, end) 
-promoters_HFDdown_anno_bed <- promoters_HFDdown_anno %>% dplyr::select("chrom"=seqnames, start, end) 
-promoters_HFDup_anno_bed <- promoters_HFDup_anno %>% dplyr::select("chrom"=seqnames, start, end) 
-promoters_genomewide_anno_bed <- promoters_genomewide_anno %>% dplyr::select("chrom"=seqnames, start, end) 
-
-enhancers_allDB_anno_bed <- enhancers_allDB_anno %>% dplyr::select("chrom"=seqnames, start, end) 
-enhancers_HFDup_anno_bed <- enhancers_HFDup_anno %>% dplyr::select("chrom"=seqnames, start, end) 
-enhancers_HFDdown_anno_bed <- enhancers_HFDdown_anno %>% dplyr::select("chrom"=seqnames, start, end) 
-enhancers_genomewide_anno_bed <- enhancers_genomewide_anno %>% dplyr::select("chrom"=seqnames, start, end) 
-
-write.table(promoters_allDB_anno_bed, paste0(edited_path,"/220629_promoters_allDB_182_Mart-anno_unique_shortestDistance.bed"), quote = F, col.names = F, row.names = F, sep="\t")
-write.table(promoters_HFDdown_anno_bed, paste0(edited_path, "/220629_HFDdown_promoters_78_Mart-anno_unique_shortestDistance.bed"), quote = F, col.names = F, row.names = F, sep="\t")
-write.table(promoters_HFDup_anno_bed, paste0(edited_path, "/220629_HFDup_promoters_104_Mart-anno_unique_shortestDistance.bed"), quote = F, col.names = F, row.names = F, sep="\t")
-write.table(promoters_genomewide_anno_bed, paste0(edited_path, "/220629_HFDup_promoters_13220_Mart-anno_unique_shortestDistance.bed"), quote = F, col.names = F, row.names = F, sep="\t")
-
-write.table(enhancers_allDB_anno_bed, paste0(edited_path, "/220629_enhancers_allDB_1816_Mart-anno.bed"), quote = F, row.names = F, col.names = F, sep="\t")
-write.table(enhancers_HFDup_anno_bed, paste0(edited_path, "/220629_enhancers_HFDup_1211_Mart-anno.bed"), quote = F, row.names = F, col.names = F, sep="\t")
-write.table(enhancers_HFDdown_anno_bed, paste0(edited_path, "/220629_enhancers_HFDdown_605_Mart-anno.bed"), quote = F, row.names = F, col.names = F, sep="\t")
-write.table(enhancers_genomewide_anno, paste0(edited_path, "/220629_enhancers_HFDdown_28392_Mart-anno.bed"), quote = F, row.names = F, col.names = F, sep="\t")
+  peaks_annotated_bed[[i]] <- peaks_annotated[[i]] %>% dplyr::select("chrom"=seqnames, start, end) 
+  
+write.table(peaks_annotated_bed[[i]], paste0("results/Epigenome_analysis/",i, "_", as.character(length(unique(peaks_annotated[[i]]$peak))), "_", "anno.bed") ,quote = F, row.names = F, sep="\t", col.names = F)
+  
+}
 ```
 
 # Summary statistics about distance to nearest TSS to evaluate how well the enhancers/promoters were determined.
 ```{r}
-summary(promoters_allDB_anno$shortestDistance)
-summary(enhancers_allDB_anno$shortestDistance)
 
-summary(promoters_HFDup_anno$shortestDistance)
-summary(enhancers_HFDup_anno$shortestDistance)
+# Print the distance metrics
+distance_metics <- list()
+for (i in names(peaks_annotated)) {
+  
+  print(paste("The median / mean / min / max for", i, "are:"))
+print(
+summary(peaks_annotated[[i]]$shortestDistance))
+  distance_metics[[i]] <- summary(peaks_annotated[[i]]$shortestDistance)
+}
 
-summary(promoters_HFDdown_anno$shortestDistance)
-summary(enhancers_HFDdown_anno$shortestDistance)
+# Add a column to identify the regions
+promoters_anno <- peaks_annotated$promoters_allDB %>% mutate(element = "promoters")
+enhancers_anno <- peaks_annotated$enhancers_allDB %>% mutate(element = "enhancers")
 
-summary(promoters_genomewide_anno$shortestDistance)
-summary(enhancers_genomewide_anno$shortestDistance)
+promoters_genomewide_anno <- peaks_annotated$promoters_genomewide %>% mutate(element = "promoters")
+enhancers_genomewide_anno <- peaks_annotated$enhancers_genomewide %>% mutate(element = "enhancers")
 
-promoters_anno2 <- promoters_allDB_anno %>% mutate(element = "promoters")
-enhancers_anno2 <- enhancers_allDB_anno %>% mutate(element = "enhancers")
-
-promoters_genomewide_anno2 <- promoters_genomewide_anno %>% mutate(element = "promoters")
-enhancers_genomewide_anno2 <- enhancers_genomewide_anno %>% mutate(element = "enhancers")
-
-combined_DBsites_anno <- rbind(promoters_anno2, enhancers_anno2)
-combined_allSites_anno <- rbind(promoters_genomewide_anno2, enhancers_genomewide_anno2)
+# Row-bind the dataframes together
+combined_DBsites_anno <- rbind(promoters_anno, enhancers_anno)
+combined_allSites_anno <- rbind(promoters_genomewide_anno, enhancers_genomewide_anno)
 
 combined_DBsites_anno$shortestDistance <- combined_DBsites_anno$shortestDistance +1
 combined_allSites_anno$shortestDistance <- combined_allSites_anno$shortestDistance +1
 
+# Plot the histograms
 ggplot(combined_DBsites_anno)+
   geom_histogram(aes(x=log10(shortestDistance), fill=factor(element)), binwidth=0.1, color="black", size = 0.2) +
   theme_classic() +
   scale_fill_manual("Diff-bound\nH3K27ac at", values = c("#235b95", "#73c6b6")) +
   theme(text=element_text(size=15)) +
-  xlab("shortest distance to TSS (log10(bp))") +
-  ggsave(paste0(edited_path,"/220630_DB_H3K27ac_prom_enh.pdf"), units= "cm", height = 10, width = 20)
+  xlab("shortest distance to TSS (log10(bp))") 
   
-
 ggplot(combined_allSites_anno)+
   geom_histogram(aes(x=log10(shortestDistance), fill=factor(element)), binwidth=0.1, color="black", size = 0.2) +
   theme_classic() +
   scale_fill_manual("All putative", values = c("#235b95", "#73c6b6")) +
   theme(text=element_text(size=15)) +
-  xlab("shortest distance to TSS (log10(bp))") +
-  ggsave(paste0(edited_path,"/220630_total_H3K27ac_prom_enh_unique_prom.pdf"), units= "cm", height = 10, width = 20)
+  xlab("shortest distance to TSS (log10(bp))") 
 ```
 # Make a stacked bar plot with the distances. 
 ```{r}
@@ -172,31 +156,30 @@ breaks <- c(0,1000,20000,100000,10000000)
 # specify interval/bin labels
 tags <- c("[0-1000)","[1000-20000)", "[20000-100000)", "[100000-10000000)")
 # bucketing values into bins
-promoters_anno_bins <- cut(promoters_allDB_anno$shortestDistance, 
+promoters_anno_bins <- cut(peaks_annotated$promoters_allDB$shortestDistance, 
                   breaks=breaks, 
                   include.lowest=TRUE, 
                   right=FALSE, 
                   labels=tags)
 
-enhancers_anno_bins <- cut(enhancers_allDB_anno$shortestDistance, 
+enhancers_anno_bins <- cut(peaks_annotated$enhancers_allDB$shortestDistance, 
                   breaks=breaks, 
                   include.lowest=TRUE, 
                   right=FALSE, 
                   labels=tags)
 
-promoters_genomewide_anno_bins <- cut(promoters_genomewide_anno$shortestDistance, 
+promoters_genomewide_anno_bins <- cut(peaks_annotated$promoters_genomewide$shortestDistance, 
                   breaks=breaks, 
                   include.lowest=TRUE, 
                   right=FALSE, 
                   labels=tags)
 
-enhancers_genomewide_anno_bins <- cut(enhancers_genomewide_anno$shortestDistance, 
+enhancers_genomewide_anno_bins <- cut(peaks_annotated$enhancers_genomewide$shortestDistance, 
                   breaks=breaks, 
                   include.lowest=TRUE, 
                   right=FALSE, 
                   labels=tags)
 
-#220222 - add genome-wide subsampled.
 set.seed(500)
 promoters_genomewide_anno_random_182 <- promoters_genomewide_anno[sample(nrow(promoters_genomewide_anno), size=182), ]
 promoters_genomewide_anno_random_182_bins <- cut(promoters_genomewide_anno_random_182$shortestDistance, 
@@ -211,7 +194,8 @@ promoters_genomewide_anno_random_1816_bins <- cut(enhancers_genomewide_anno_rand
                   include.lowest=TRUE, 
                   right=FALSE, 
                   labels=tags)
-# inspect bins
+
+# inspect bins. The occurence of each bin is counted.
 summary_distance <- data.frame(prom_DB = summary(promoters_anno_bins),
            enha_DB = summary(enhancers_anno_bins),
            prom_all = summary(promoters_genomewide_anno_bins),
@@ -219,38 +203,39 @@ summary_distance <- data.frame(prom_DB = summary(promoters_anno_bins),
            enha_all = summary(enhancers_genomewide_anno_bins),
            enha_all_sub = summary(promoters_genomewide_anno_random_1816_bins))
 
+# Getting the colsums for number of elements
 summary_distance.mat <- as.matrix(summary_distance)
 colsums <- colSums(summary_distance[1:6])
 
+# .. and normalize to the colSums to get percentages
 summary_distance.mat <- as.data.frame(round((
   sweep(summary_distance.mat,2,colsums, "/")*100)
   ,2))
 
 summary_distance <- tibble::rownames_to_column(summary_distance.mat)
 
+# long format needed for plotting
 summary_distance_long <- pivot_longer(summary_distance, cols = 2:7) %>%
   group_by(name) 
 
+# Replacing the brackets
 summary_distance_long$rowname <- gsub(pattern="\\[", "", summary_distance_long$rowname)
 summary_distance_long$rowname <- gsub(pattern="\\)", "", summary_distance_long$rowname)
 
-
+# Setting the order for plotting
 order_dist <- c("0-1000", "1000-20000", "20000-100000", "100000-10000000")
 order_element <- c("prom_DB", "prom_all", "prom_all_sub", "enha_DB", "enha_all", "enha_all_sub")
 
-#red color scheme used before.
-# values=c("#e6b0aa","#cd6155", "#a93226","#7b241c")) +
-
-
+# Plotting the stacked bar plots
 ggplot(summary_distance_long) +
   geom_col(aes(y=value, x=factor(name, levels=order_element), fill=factor(rowname, levels=order_dist))) +
   scale_fill_manual("Distance\nfrom TSS (bp)", values=c("#e8daef","#ce93d8", "#9c27b0","#633974")) +
   ylab("Percentage of elements") +
   xlab("") + 
   theme(text=element_text(size=15)) +
-  theme_classic() +
-  ggsave(paste0(edited_path,"/220630_percent_distances_stackBar_subsampled.pdf"), units= "cm", height = 10, width = 15)
+  theme_classic()
 ```
+
 ```{r}
 sessionInfo()
 ```

@@ -4,18 +4,18 @@
 #SBATCH -p core
 #SBATCH -n 2
 #SBATCH -t 2:00:00
-#SBATCH -J 220630_FeatureCounts
-#SBATCH --output=220630_FeatureCounts_enh.out
-#SBATCH --error=220630_FeatureCounts_enh.err
+#SBATCH -J 220825_FeatureCounts
+#SBATCH --output=220825_FeatureCounts_enh.out
+#SBATCH --error=220825_FeatureCounts_enh.err
 
 #load packages. bioinfo-tools is loaded on uppmax in order to load all other packages used.
 module load bioinfo-tools
 module load subread/2.0.0
 
 #file paths
-BAM_PATH=/proj/snic2020-16-225/Chris/ChIPseq/210714_K27_me3_HFD_ESR/210713_CS_HFD_ESR_K4me3_K27ac/Mapping
-OUTPUT_PATH=/proj/snic2020-16-225/Chris/ChIPseq/210714_K27_me3_HFD_ESR/210713_CS_HFD_ESR_K4me3_K27ac/220622_reads_in_peaks_reanalyze
-SAF_PATH=/proj/snic2020-16-225/Chris/ChIPseq/210714_K27_me3_HFD_ESR/210713_CS_HFD_ESR_K4me3_K27ac/220622_reads_in_peaks_reanalyze
+BAM_PATH="../Mapping"
+OUTPUT_PATH="."
+SAF_PATH="."
 
 #run featureCounts
 featureCounts \
@@ -26,10 +26,10 @@ featureCounts \
 	-F SAF \
         -O \
         -C \
-        -a ${SAF_PATH}/220629_enhancers_allDB_1816_Mart-anno.saf  \
-        -o ${OUTPUT_PATH}/220630_diffbind_HFDall_enhancers1816_H3K27ac.readCount \
+        -a ${SAF_PATH}/enhancers_allDB_1816.saf  \
+        -o ${OUTPUT_PATH}/diffbind_enhancers_1816_H3K27ac.readCount \
         ${BAM_PATH}/*H3K27ac*MkDup.bam \
-        &> ${OUTPUT_PATH}/220630_diffbind_HFDall_enhancers1816_H3K27ac.readCount.log
+        &> ${OUTPUT_PATH}/diffbind_enhancers_1816_H3K27ac.readCount.log
 
 
 #Readme
@@ -44,5 +44,3 @@ featureCounts \
 #-C: If specified, the chimeric fragments (those fragments that have their two ends aligned to different chromosomes) will NOT be counted.
 #-a: Name of the annotation file. Here it's gencode v27 chr1-22
 #-o: output file name
-
-
