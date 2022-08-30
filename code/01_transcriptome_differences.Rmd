@@ -23,6 +23,10 @@ knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
 source('code/00_helper_functions.R')
 library(tidyverse)
 library(DESeq2)
+library(VennDiagram)
+library(clusterProfiler)
+library(org.Mm.eg.db)
+library(ggrepel)
 
 ```
 
@@ -184,11 +188,10 @@ ggplot(df, aes(x=comparison, y=value)) +
 
 ```
 
-# Plot Venn Diagram (Fig S1E)
-```{r}
-library(tidyverse)
-library(VennDiagram)
 
+# Plot Venn Diagram (Fig S1E)
+
+```{r}
 CDf_HFDf <- DEGs$filt$CDfVsHFDf
 CDm_HFDm <- DEGs$filt$CDmVsHFDm
 
@@ -223,12 +226,12 @@ intersections[[2]] <- setdiff(CDf_HFDf$ensembl_gene_id, intersections$shared_gen
 intersections[[3]] <- setdiff(CDm_HFDm$ensembl_gene_id, intersections$shared_genes)
 ```
 
+
 # Gene Ontologies (Fig S1F,G,H)
+
 ```{r}
-library(clusterProfiler)
 background <- DEGs$unfilt$CDfVsCDm$ensembl_gene_id 
 options(connectionObserver = NULL) # workaround due to a bug
-library(org.Mm.eg.db)
 
 GO_list <- list(GO.results = list(),
                 GO.top8 = list(),
@@ -264,11 +267,10 @@ print(ggplot(GO_list$GO.top8[[i]], aes(x=Count, y=factor(Description, levels=rev
 } 
 ```
 
-# Plot volcanos (Fig S1I,J)
-```{r}
-library(tidyverse)
-library(ggrepel)
 
+# Plot volcanos (Fig S1I,J)
+
+```{r}
 # Load dataframes from rds object.
 ## DEG in CD comparison
 CDf_CDm <- DEGs$filt$CDfVsCDm
@@ -348,6 +350,7 @@ ggplot(CDf_CDm_unfilt) +
     size = 1.5) +
   ggtitle("Diff. expressed sex-biased genes in control diet\n")
 ```
+
 ```{r}
 ggplot(HFDf_HFDm_unfilt) +
   geom_point(data = HFDf_HFDm_unfilt,
@@ -386,6 +389,7 @@ ggplot(HFDf_HFDm_unfilt) +
     size = 1.5) +
   ggtitle("Fold-changes of Sex-biased (in CD) genes in \n HFD mice")
 ```
+
 
 # Export filtered and normalized RNAseq data
 

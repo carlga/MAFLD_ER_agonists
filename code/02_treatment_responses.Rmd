@@ -279,6 +279,76 @@ patchwork::wrap_plots(p, nrow=2, ncol=2, byrow=T, guides = 'collect')
 ```
 
 
+# Filter reverted gene set
+
+```{r, fig.width=12, fig.height=3}
+# remove genes that are not truly restored to CD levels by the treatments (see alluvial plots)
+recovered_filt <- lapply(list(DPN='DPNVsHFDm',DIP='DIPVsHFDm',E2='E2VsHFDm',PPT='PPTVsHFDm'), function(x) {
+  
+  treatment_up <- DEGs$filt[[x]] %>% 
+    dplyr::filter(log2FoldChange>0) %>% 
+    dplyr::pull(ensembl_gene_id)
+  treatment_down <- DEGs$filt[[x]] %>% 
+    dplyr::filter(log2FoldChange<0) %>% 
+    dplyr::pull(ensembl_gene_id)
+  recovered_up <- DEGs$filt$CDmVsHFDm %>% 
+    dplyr::filter(ensembl_gene_id %in% DEG_sets$gene_id$reverted 
+                  & log2FoldChange>0 
+                  & ensembl_gene_id %in% DEGs$filt[[x]]$ensembl_gene_id) %>% 
+    dplyr::pull(ensembl_gene_id)
+  recovered_down <- DEGs$filt$CDmVsHFDm %>% 
+    dplyr::filter(ensembl_gene_id %in% DEG_sets$gene_id$reverted 
+                  & log2FoldChange<0 
+                  & ensembl_gene_id %in% DEGs$filt[[x]]$ensembl_gene_id) %>% 
+    dplyr::pull(ensembl_gene_id)
+  
+  c(intersect(treatment_up, recovered_down),
+    intersect(treatment_down, recovered_up))
+
+}) %>% 
+  unlist() %>% 
+  unique()
+
+recovered_filt <- split(recovered_filt, 1:length(recovered_filt))
+
+p <- lapply(recovered_filt, function(x) {
+  df <- RNAseq$tpm %>% 
+    groupTransform(group.lbls = RNAseq$design_meta$condition, 
+                   FUN = function(x) apply(x,1,mean)) %>% 
+    dplyr::filter(row.names(.) %in% x) %>% 
+    dplyr::select(CDm, HFDm, DPN, DIP, E2, PPT) %>% 
+    tidyr::pivot_longer(cols = dplyr::everything(), names_to = 'condition', values_to = 'expression') %>% 
+    dplyr::mutate(condition = factor(condition, levels = c('CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT')))
+  
+  ggplot(df, aes(x=condition, y=expression)) +
+    geom_line(size = 1.2, group=1) +
+    geom_point(shape=21, size=1, stroke=1.5, fill='white') +
+    ggtitle(x) +
+    theme_bw() +
+    theme(strip.background = element_blank())
+  
+})
+
+patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T)
+
+```
+
+```{r}
+# update DEG sets
+# ENSMUSG00000018868 and ENSMUSG00000041653 do not show recovery with any treatment
+DEG_sets$gene_id$non_reverted <- c(DEG_sets$gene_id$non_reverted, c('ENSMUSG00000018868', 'ENSMUSG00000041653'))
+DEG_sets$gene_id$reverted <- dplyr::setdiff(DEG_sets$gene_id$reverted, c('ENSMUSG00000018868', 'ENSMUSG00000041653'))
+
+DEG_sets$gene_symbols <- lapply(DEG_sets$gene_id, function(x) {
+  dplyr::recode(x, 
+                !!!setNames(RNAseq$annotation$external_gene_name,
+                            RNAseq$annotation$geneID)) %>% 
+    unique()
+})
+
+```
+
+
 # Gene ontology analysis
 
 ```{r}
