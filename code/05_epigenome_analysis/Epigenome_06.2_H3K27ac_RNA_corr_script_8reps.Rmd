@@ -185,9 +185,8 @@ K27_GE_long_group <- K27_GE_long_dd %>% group_by(loc_ID, query_ID) %>%
 write.table(K27_GE_long_group, "results/Epigenome_analysis/K27_GE_corr_before_filtering.txt", quote=F, row.names=F, sep="\t")
 
 DEGsets <- readRDS("results/bulkRNAseq_mmus_DEG_sets.rds")
-
 revALL <- DEGsets$gene_id$reverted
-
+length(revALL)
 
 K27_GE_long_rev_insect <-  K27_GE_long_group %>%
   filter(ensembl_gene_id %in% revALL)
@@ -290,7 +289,7 @@ length(unique(H3K27ac_CTCF_intersect$loc_ID))
 unique_symbols <- unique(H3K27ac_CTCF_intersect$symbol)
 length(unique_symbols)
 
-# 46 unique genes that underlie potential enhancer-mediated estrogen-dependent regulation
+# 45 unique genes that underlie potential enhancer-mediated estrogen-dependent regulation
 ```
 
 #Compare the fold-change values for these sites - in addition to the reads in peaks this gives information about how much these enhancers are changed
@@ -331,13 +330,13 @@ length(unique(K27_GE_long_group_plot_filt$symbol))
 # The following should yield "character(0)"
 setdiff(K27_GE_long_group_plot_filt$symbol, H3K27ac_CTCF_intersect_log2FC_corr$symbol)
 
-length(unique(K27_GE_long_group_plot_filt$symbol)) # 46 unique genes
-nrow(K27_GE_long_group_plot_filt)/8 # 70 enhancer - gene pairs
-length(unique(K27_GE_long_group_plot_filt$loc_ID)) # 68 unique enhancers
+length(unique(K27_GE_long_group_plot_filt$symbol)) # 45 unique genes
+nrow(K27_GE_long_group_plot_filt)/8 # 68 enhancer - gene pairs
+length(unique(K27_GE_long_group_plot_filt$loc_ID)) # 67 unique enhancers
 
 # 68 total combinations of location IDs and genes, one enhancer goes for to genes.
 
-write.table(K27_GE_long_group_plot_filt, "results/Epigenome_analysis/corr_46genes_69enh_toPlot.txt", row.names = F,  quote = F, sep="\t")
+write.table(K27_GE_long_group_plot_filt, "results/Epigenome_analysis/corr_44genes_67enh_toPlot.txt", row.names = F,  quote = F, sep="\t")
 ```
 
 ```{r}
@@ -415,7 +414,7 @@ library(clusterProfiler)
 symbols <- K27_GE_long_group_plot_filt$symbol %>% unique()
 
 reactome_pathways <- readRDS("results/bulkRNAseq_mmus_GSEA_reactome_cluster_sets.rds")
-reactome_pathways.2 <- as.data.frame(do.call(cbind, test))
+reactome_pathways.2 <- as.data.frame(do.call(cbind, reactome_pathways))
 
 reactome_pathways.long <- pivot_longer(reactome_pathways.2, cols=1:24)
 intersect_pathways_symbols <- reactome_pathways.long %>% filter(value %in% symbols) %>% unique()
@@ -467,3 +466,7 @@ View(as.data.frame(GO_BP))
     ggtitle("") + 
     xlab("") 
 ```
+```{r}
+sessionInfo()
+```
+
