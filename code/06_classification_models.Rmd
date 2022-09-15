@@ -501,6 +501,21 @@ p[[3]] <- ggplot(df, aes(x=Fibrosis_class, y=SULF2, fill=Fibrosis_class, color=F
 
 patchwork::wrap_plots(p, nrow=1, ncol=3, byrow=T)
 
+
+# Significances (anova)
+SULF2_Stage_aov <- aov(df$SULF2 ~ df$Stage)
+SULF2_fib_aov <- aov(df$SULF2 ~ df$Fibrosis_class)
+SULF2_NAS_aov <- aov(df$SULF2 ~ df$NAS_class)
+TukeyHSD(SULF2_Stage_aov)
+TukeyHSD(SULF2_fib_aov)
+TukeyHSD(SULF2_NAS_aov)
+
+THBS2_Stage_aov <- aov(df$THBS2 ~ df$Stage)
+THBS2_fib_aov <- aov(df$THBS2 ~ df$Fibrosis_class)
+THBS2_NAS_aov <- aov(df$THBS2 ~ df$NAS_class)
+TukeyHSD(THBS2_Stage_aov)
+TukeyHSD(THBS2_fib_aov)
+TukeyHSD(THBS2_NAS_aov)
 ```
 
 
