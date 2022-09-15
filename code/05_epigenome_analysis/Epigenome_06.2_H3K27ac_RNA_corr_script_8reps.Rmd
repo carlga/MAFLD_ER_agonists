@@ -336,7 +336,7 @@ length(unique(K27_GE_long_group_plot_filt$loc_ID)) # 67 unique enhancers
 
 # 68 total combinations of location IDs and genes, one enhancer goes for to genes.
 
-write.table(K27_GE_long_group_plot_filt, "results/Epigenome_analysis/corr_44genes_67enh_toPlot.txt", row.names = F,  quote = F, sep="\t")
+write.table(K27_GE_long_group_plot_filt, "results/Epigenome_analysis/corr_45genes_67enh_toPlot.txt", row.names = F,  quote = F, sep="\t")
 ```
 
 ```{r}
@@ -411,6 +411,8 @@ ggscatter(Sulf2_also_non_filter_pass, x = "H3K27ac", y="Gene_expression", add = 
 # Plot histogram to show in which processes (of the 24 GSEA) the 45 genes fall into.
 ```{r}
 library(clusterProfiler)
+K27_GE_long_group_plot_filt <- read.delim("results/Epigenome_analysis/corr_45genes_67enh_toPlot.txt")
+length(unique(K27_GE_long_group_plot_filt$symbol))
 symbols <- K27_GE_long_group_plot_filt$symbol %>% unique()
 
 reactome_pathways <- readRDS("results/bulkRNAseq_mmus_GSEA_reactome_cluster_sets.rds")
@@ -420,11 +422,20 @@ reactome_pathways.long <- pivot_longer(reactome_pathways.2, cols=1:24)
 intersect_pathways_symbols <- reactome_pathways.long %>% filter(value %in% symbols) %>% unique()
 intersect_pathways_symbols_counts <- as.data.frame(table(intersect_pathways_symbols$name))
 
+order.GSEA.pathways <- as.data.frame(table(intersect_pathways_symbols$name)) %>%
+  arrange(-Freq) %>%
+  dplyr::pull("Var1") %>%  
+  as.vector()
+
+str(order.GSEA.pathways)
+
 ggplot(intersect_pathways_symbols) +
-  geom_histogram(aes(x=name), stat="count", fill="black") +
+  geom_histogram(aes(x=factor(name, levels=rev(order.GSEA.pathways))), stat="count", fill="grey", color="black") +
+  coord_flip() +
   theme_classic() +
-  theme(axis.text.x = element_text(angle=90, hjust = 0.95, vjust = .5)) +
+  theme(axis.text.x = element_text(vjust = .5)) +
   xlab("") +
+  ylab("Gene count") +
   scale_y_continuous(limits = c(), breaks=c(0,2,4,6,8,10)) 
 ```
 
@@ -434,6 +445,9 @@ library(clusterProfiler)
 options(connectionObserver = NULL) 
 # Warning: call dbDisconnect() when finished working with a connection
 library(org.Mm.eg.db)
+
+unique_symbols <- K27_GE_long_group_plot_filt$symbol %>% unique()
+length(unique_symbols)
 
 GO_BP <- enrichGO(gene = unique_symbols,
                 keyType       = 'SYMBOL',
@@ -456,16 +470,17 @@ View(as.data.frame(GO_BP))
   name_order <- plot_me_ordered %>%
     dplyr::pull("Description")
   
-  ggplot(plot_me_ordered, aes(x=factor(Description, levels=name_order), fill=p.adjust, y=Count)) +
+  ggplot(plot_me_ordered, aes(x=factor(Description, levels=name_order), fill=-log10(p.adjust), y=Count)) +
     geom_bar(stat="identity") +
     coord_flip() +
-    scale_fill_gradient(low = "black", high = "#808b96", trans= "log", 
-    limits = c(1e-6, 1e-2), breaks = c(1e-6, 1e-4, 1e-2))+
+    scale_fill_gradient(low = "#808b96", high = "black", 
+    limits = c(2, 6), breaks = c(2, 4, 6))+
     theme_classic() +
     theme(text=element_text(size = 18)) +
     ggtitle("") + 
     xlab("") 
 ```
+
 ```{r}
 sessionInfo()
 ```
