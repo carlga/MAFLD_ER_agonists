@@ -54,6 +54,13 @@ colPals$inferno <- c('#FCFFA4', '#FCA50A', '#DD513A', '#932667', '#420A68', '#00
 # Liver Cell Atlas data from Guilliams et al. 2022 (https://www.livercellatlas.org/download.php)
 liver <- readRDS(file = 'data/livercellatlas_feb2022.rds')
 
+# Liver Cell Atlas sample metadata
+liver_meta <- read.table(
+  file = 'data/livercellatlas_feb2022_sample_annotation.tsv',
+  stringsAsFactors = FALSE,
+  sep = '\t',
+  header = TRUE)
+
 # gene sets
 DEG_sets <- readRDS('results/bulkRNAseq_mmus_DEG_sets.rds')
 pathway_sets <- readRDS('results/bulkRNAseq_mmus_GSEA_reactome_cluster_sets.rds')
@@ -65,6 +72,8 @@ pathway_sets <- readRDS('results/bulkRNAseq_mmus_GSEA_reactome_cluster_sets.rds'
 
 ```{r}
 df <- liver$mouseStSt$All@meta.data %>% 
+  dplyr::left_join(liver_meta, by = 'sample') %>% 
+  dplyr::filter(gender == 'male' & annot != 'HsPCs') %>% 
   dplyr::mutate(annot = replace(annot, annot == 'Fibroblasts', 'Stromal cells'))
 
 ggplot(df, aes(x=UMAP_1, y=UMAP_2, color=annot, fill=annot, label=annot)) +
@@ -83,6 +92,8 @@ ggplot(df, aes(x=UMAP_1, y=UMAP_2, color=annot, fill=annot, label=annot)) +
 
 ```{r}
 df <- liver$mouseStSt$All@meta.data %>% 
+  dplyr::left_join(liver_meta, by = 'sample') %>% 
+  dplyr::filter(gender == 'male' & annot != 'HsPCs') %>% 
   dplyr::mutate(annot = replace(annot, annot == 'Fibroblasts', 'Stromal cells')) %>% 
   dplyr::filter(digest == 'inVivo') %>% 
   dplyr::group_by(annot) %>% 
@@ -90,6 +101,8 @@ df <- liver$mouseStSt$All@meta.data %>%
   dplyr::mutate(mouseStSt_freq = round(mouseStSt_n / sum(mouseStSt_n) * 100, 2))
 
 df2 <- liver$mouseNAFLD$All@meta.data %>% 
+  dplyr::left_join(liver_meta, by = 'sample') %>% 
+  dplyr::filter(gender == 'male' & annot != 'HsPCs') %>% 
   dplyr::filter(digest == 'inVivo') %>% 
   dplyr::mutate(annot = replace(annot, annot == 'KCs', 'Kupffer cells')) %>% 
   dplyr::mutate(annot = replace(annot, annot == 'Mono/mono-derived cells', 'Monocytes & Monocyte-derived cells')) %>% 
@@ -100,6 +113,7 @@ df2 <- liver$mouseNAFLD$All@meta.data %>%
 
 df <- dplyr::full_join(df, df2, by = 'annot') %>% 
   replace(is.na(.), 0) %>% 
+  dplyr::mutate(mouseStSt_minus_NAFLD_freq = mouseStSt_freq - mouseNAFLD_freq) %>% 
   tidyr::pivot_longer(cols = c(mouseStSt_freq, mouseNAFLD_freq), names_to = 'cond', values_to = 'freq') %>% 
   dplyr::mutate(annot = factor(annot, levels = rev(names(colPals$celltypes))),
                 cond = factor(cond, levels = c('mouseStSt_freq','mouseNAFLD_freq')))
@@ -118,6 +132,25 @@ ggplot(df, aes(x=freq, y=annot, fill=cond, label=freq)) +
 
 ```
 
+```{r}
+# Cell type frequency change (%CD - %HFD)
+df2 <- df %>% 
+  dplyr::select(annot, mouseStSt_minus_NAFLD_freq) %>% 
+  dplyr::filter(!duplicated(.)) %>% 
+  dplyr::mutate(change=ifelse(mouseStSt_minus_NAFLD_freq>0, 'up', 'down'))
+
+ggplot(df2, aes(x=mouseStSt_minus_NAFLD_freq, y=annot, fill=change)) +
+  geom_bar(color="black", size=0.5, width=0.8, position="stack", stat="identity") +
+  scale_fill_manual(values = c("#2166AC","#B2182B")) +
+  scale_x_continuous(expand = expansion(mult = c(.0, .1)),
+                     limit = c(-25, 25),
+                     breaks = c(-20, 0, 20)) +
+  xlab('Change (%)') +
+  theme_bw() +
+  theme(legend.position = 'none')
+
+```
+
 
 # Cell type specificity of ER activation signatures
 
@@ -126,6 +159,8 @@ ggplot(df, aes(x=freq, y=annot, fill=cond, label=freq)) +
 dat <- liver$mouseStSt$All
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::left_join(liver_meta, by = 'sample') %>% 
+  dplyr::filter(gender == 'male' & annot != 'HsPCs') %>% 
   dplyr::group_by(annot) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
@@ -163,6 +198,8 @@ patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T, guides = 'collect')
 dat <- liver$human$All
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::left_join(liver_meta, by = 'sample') %>% 
+  dplyr::filter(gender == 'male') %>% 
   dplyr::group_by(annot) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
@@ -198,6 +235,8 @@ patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T, guides = 'collect')
 dat <- liver$multisp$monkey
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::left_join(liver_meta, by = 'sample') %>% 
+  dplyr::filter(gender == 'male') %>% 
   dplyr::group_by(annot) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
@@ -233,6 +272,8 @@ patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T, guides = 'collect')
 dat <- liver$mouseStSt$Visium
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::left_join(liver_meta, by = 'sample') %>% 
+  dplyr::filter(gender == 'male') %>% 
   dplyr::group_by(zonationGroup) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
@@ -270,6 +311,8 @@ patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T, guides = 'collect')
 dat <- liver$mouseStSt$All
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::left_join(liver_meta, by = 'sample') %>% 
+  dplyr::filter(gender == 'male' & annot != 'HsPCs') %>% 
   dplyr::group_by(annot) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
@@ -314,6 +357,8 @@ patchwork::wrap_plots(p, ncol=5, byrow=T, guides = 'collect')
 dat <- liver$mouseNAFLD$All
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::left_join(liver_meta, by = 'sample') %>% 
+  dplyr::filter(gender == 'male' & annot != 'HsPCs') %>% 
   dplyr::group_by(annot) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
@@ -344,7 +389,7 @@ patchwork::wrap_plots(p, ncol=5, byrow=T, guides = 'collect')
 
 ## Comparison of steady state vs NAFLD
 
-```{r, fig.width=16, fig.height=6}
+```{r, fig.height = 12, fig.width = 18}
 df2 <- res %>% 
   dplyr::mutate(annot = replace(annot, annot == 'KCs', 'Kupffer cells')) %>% 
   dplyr::mutate(annot = replace(annot, annot == 'Mono/mono-derived cells', 'Monocytes & Monocyte-derived cells')) %>% 
@@ -355,18 +400,35 @@ df2 <- res %>%
   tidyr::pivot_longer(cols = `Adaptive immune system`:`Vitamin metabolism`, names_to = 'pathway', values_to = 'score') %>% 
   dplyr::mutate(cond = 'HFD')
 
-df <- df %>% 
+df3 <- df %>% 
   dplyr::mutate(cond = 'CD') %>% 
   dplyr::bind_rows(df2) %>% 
   dplyr::mutate(cond = factor(cond, levels = c('CD','HFD')),
-                annot = factor(annot, levels = rev(names(colPals$celltypes))),
-                pathway = factor(pathway, levels = names(pathway_sets)))
+                annot = factor(annot, levels = names(colPals$celltypes)),
+                pathway = factor(pathway, levels = rev(names(pathway_sets))))
 
-ggplot(df, aes(x=pathway, y=annot, size=score, color=score)) +
+ggplot(df3, aes(x=annot, y=pathway, size=score, color=score)) +
   geom_point() +
   scale_color_gradientn(colours = colPals$inferno) +
   scale_size(range = c(1,8))+
   facet_wrap(~cond) +
+  theme_bw() +
+  theme(strip.background = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        axis.text.y = element_text(hjust = 1, vjust = 0.3))
+
+```
+
+```{r, fig.height = 12, fig.width = 11}
+# Cell type enrichment change (CD - HFD)
+df4 <- df %>% 
+  dplyr::mutate(score = score - df2$score) %>% 
+  dplyr::mutate(size = abs(score))
+
+ggplot(df4, aes(x=annot, y=pathway, size=score, color=score)) +
+  geom_point() +
+  scale_color_gradientn(colours = colPals$RdBu) +
+  scale_size(range = c(1,8), breaks = c(0,0.5,1), limits = c(0,1))+
   theme_bw() +
   theme(strip.background = element_blank(),
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
@@ -382,6 +444,8 @@ ggplot(df, aes(x=pathway, y=annot, size=score, color=score)) +
 dat <- liver$mouseStSt$Visium
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::left_join(liver_meta, by = 'sample') %>% 
+  dplyr::filter(gender == 'male') %>% 
   dplyr::group_by(zonationGroup) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
