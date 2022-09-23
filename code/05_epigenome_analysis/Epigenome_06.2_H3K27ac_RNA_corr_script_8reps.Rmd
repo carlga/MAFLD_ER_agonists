@@ -27,7 +27,7 @@ library(tidyverse)
 #Import the closest genes as determined by 
 closest <- read.delim("results/Epigenome_analysis/origin_closest1_left_closest_1_2_right.bed", header=F)
 enhancer_ID <- c(1:1816)
-# Row 738 has an NA in several columns (including V8), remove this one as it causes issues downstream. 
+# Row 738 has an NA in several columns (including V8), remove this one as it causes issues downstream. This lowers the number of potential pairs.
 closest2 <- closest %>%
 separate(col = V3, into = c("V3_left", "V3_right"), sep = "\\|") %>%
 separate(col = V5, into = c("V5_left", "V5_right"), sep = "\\|") %>%
@@ -69,6 +69,8 @@ library("biomaRt")
 
 gr_closest_long <- makeGRangesFromDataFrame(closest_long,  start.field = "start", end.field = "end", ignore.strand = T,keep.extra.columns = T) 
 names(gr_closest_long) <- c(1:length(gr_closest_long))
+
+
 ```
 ## Annotate the TSS
 ```{r}
@@ -86,6 +88,8 @@ gr_closest_long_anno <- annotatePeakInBatch(gr_closest_long,
                                PeakLocForDistance = "start")
 
 gr_closest_long_anno <- as.data.frame(gr_closest_long_anno)
+
+table(gr_closest_long_anno$query_ID)
 ```
 
 # Import the gene expression data
@@ -152,6 +156,10 @@ colSums(counts_enha_norm2[,])
 counts_enha_norm2.1 <- counts_enha_norm2 %>% rownames_to_column("loc_ID")
 K27_GE_joined <- inner_join(chrom_TPM2, counts_enha_norm2.1, by="loc_ID")
 View(K27_GE_joined)
+
+table(K27_GE_joined$query_ID) 
+
+write.table(K27_GE_joined, "Supplemental_tables/SupplementalTable_initial_EREGs.txt", quote=F, row.names=F, sep="\t")
 ```
 
 ## Subset the enhancer table and put into long format
@@ -182,41 +190,36 @@ K27_GE_long_group <- K27_GE_long_dd %>% group_by(loc_ID, query_ID) %>%
   mutate(correlation_pearson = cor(Gene_expression, H3K27ac, method="pearson")) %>%
   mutate(correlation_spearman = cor(Gene_expression, H3K27ac, method="spearman"))
 
-write.table(K27_GE_long_group, "results/Epigenome_analysis/K27_GE_corr_before_filtering.txt", quote=F, row.names=F, sep="\t")
+# Export a table for all EREG with correlations BEFORE filtering anything.
+write.table(K27_GE_long_group, "Supplemental_tables/SupplementalTable_Initial_EREG_genes_corr.txt", quote=F, row.names=F, sep="\t")
 
+# Filter the EREGs for a | pearson correlation |  > 0.75
+K27_GE_long_group_plot_pearson <- K27_GE_long_group %>%
+  filter(abs(correlation_pearson) > 0.75) %>%
+  group_by(loc_ID, query_ID) %>%
+  mutate(name.ident = paste0(symbol, "_", loc_ID))
+nrow(K27_GE_long_group_plot_pearson)/8  # 764 enhancer gene pairs remain.
+write.table(K27_GE_long_group_plot_pearson, "Supplemental_tables/SupplementalTable_step2_EREG_genes_corr_0.75pearson.txt", quote=F, row.names=F, sep="\t")
+
+# Also for spearman, but is not used in the end.
+K27_GE_long_group %>%
+  filter(abs(correlation_spearman) > 0.75) %>% group_by(loc_ID, query_ID) %>%
+  mutate(name.ident = paste0(symbol, "_", loc_ID)) %>% nrow(.)/8  # 595 enhancer gene pairs remain.
+
+# Import the reverted gene set (n=379)
 DEGsets <- readRDS("results/bulkRNAseq_mmus_DEG_sets.rds")
 revALL <- DEGsets$gene_id$reverted
 length(revALL)
 
-K27_GE_long_rev_insect <-  K27_GE_long_group %>%
+K27_GE_long_rev_insect <-  K27_GE_long_group_plot_pearson %>%
   filter(ensembl_gene_id %in% revALL)
-length(unique(K27_GE_long_rev_insect$ensembl_gene_id))
+length(unique(K27_GE_long_rev_insect$ensembl_gene_id)) # 67 unique genes remain after filtering for reverted gene set.
 
-
-K27_GE_long_group_plot_pearson <- K27_GE_long_rev_insect %>%
-  filter(abs(correlation_pearson) > 0.75) %>%
-  group_by(loc_ID, query_ID) %>%
-  mutate(name.ident = paste0(symbol, "_", loc_ID))
-
-K27_GE_long_group_plot_pearson_revCount <- K27_GE_long_group_plot_pearson %>%
-  mutate(name.ident = paste0(loc_ID, ":", symbol))
-
-K27_GE_long_group_plot_spearman <- K27_GE_long_rev_insect %>%
-  filter(abs(correlation_spearman) > 0.75) %>% group_by(loc_ID, query_ID) %>%
-  mutate(name.ident = paste0(symbol, "_", loc_ID))
-
-K27_GE_long_group_plot_pearson_before_Rev <- K27_GE_long_group %>%
-  filter(abs(correlation_pearson) > 0.75) %>% group_by(loc_ID, query_ID) %>%
-  mutate(name.ident = paste0(symbol, "_", loc_ID))
-
-
-K27_GE_long_group_plot_spearman_before_Rev <- K27_GE_long_group %>%
-  filter(abs(correlation_spearman) > 0.75) %>% group_by(loc_ID, query_ID) %>%
-  mutate(name.ident = paste0(symbol, "_", loc_ID))
+write.table(K27_GE_long_rev_insect, "Supplemental_tables/SupplementalTable_step3_EREG_genes_corr_0.75pearson_reverted.txt", quote=F, row.names=F, sep="\t")
 ```
 #Add 50kb to intersect CTCF peaks with the H3K27ac peaks
 ```{r}
-K27_GE_long_group_coordinates <- inner_join(K27_GE_long_group_plot_pearson, location, by="loc_ID")
+K27_GE_long_group_coordinates <- inner_join(K27_GE_long_rev_insect, location, by="loc_ID")
 K27_GE_long_group_coordinates$end <- as.integer(K27_GE_long_group_coordinates$end)
 
 K27_GE_long_group_coordinates_left <- K27_GE_long_group_coordinates %>%
@@ -285,10 +288,9 @@ H3K27ac_right_CTCFx <- read.delim("results/Epigenome_analysis/H3K27ac_right_CTCF
 ```{r}
 H3K27ac_CTCF_intersect <- rbind(H3K27ac_left_CTCFx_outwards, H3K27ac_left_CTCFx, H3K27ac_right_CTCFx_outwards, H3K27ac_right_CTCFx)
 table(H3K27ac_CTCF_intersect$CTCF_pos)
-length(unique(H3K27ac_CTCF_intersect$loc_ID))
+length(unique(H3K27ac_CTCF_intersect$loc_ID)) # Some enhancers (= loc_IDs) are duplicated, 67 unique ones.
 unique_symbols <- unique(H3K27ac_CTCF_intersect$symbol)
 length(unique_symbols)
-
 # 45 unique genes that underlie potential enhancer-mediated estrogen-dependent regulation
 ```
 
@@ -296,18 +298,18 @@ length(unique_symbols)
 ```{r}
 CDvsHFD_H3K27ac_Diffbind <- readRDS("results/Epigenome_analysis/Diffbind_results_FDR_fold.rds")$all_DB_peaks$K27_CDvsHFD %>%
  mutate(loc_ID = paste0(seqnames, ".",start,".",end), .before = seqnames) %>%
-  dplyr::select(loc_ID, Fold, FDR)
+  dplyr::select(loc_ID, Fold, FDR) # Produce locIDs to match the EREG IDs
 
 # These are the enhancers intersected with CTCF. But more informative with foldchanges from Diffbind. The correlations are not added here.
 H3K27ac_CTCF_intersect_log2FC <- inner_join(H3K27ac_CTCF_intersect,CDvsHFD_H3K27ac_Diffbind, by="loc_ID") 
 
-# Retrieves the unique person corr values from BEFORE the CTCF intersection 
-corr_values <- K27_GE_long_group_plot_pearson %>%
+# Retrieves the unique pearson corr values from BEFORE the CTCF intersection 
+corr_values <- K27_GE_long_rev_insect %>%
   ungroup() %>%
   dplyr::select("loc_ID", "correlation_pearson", "symbol") %>%
   unique() %>% group_by(symbol)
 
-# Creates a dataframe between the corr values and log2FCs. This one is the COMPLETE dataframe
+# Creates a dataframe between the corr values and log2FCs. 
 H3K27ac_CTCF_intersect_log2FC_corr <- inner_join(corr_values, H3K27ac_CTCF_intersect_log2FC, by=c("loc_ID", "symbol"))
 duplicated(H3K27ac_CTCF_intersect_log2FC_corr)
 length(unique(H3K27ac_CTCF_intersect_log2FC_corr$symbol))
@@ -319,17 +321,17 @@ H3K27ac_CTCF_intersect_log2FC_corr <- H3K27ac_CTCF_intersect_log2FC_corr %>%
 
 ```{r}
 # To plot, we need the single columns for gene expression and log2FC again.  Note: some enhancers have the same gene associated as closest AND second closest due to multiple 
-K27_GE_long_group_plot_filt <- K27_GE_long_group_plot_pearson %>%
+K27_GE_long_group_plot_filt <- K27_GE_long_rev_insect %>%
   group_by(symbol, loc_ID) %>%
   mutate(name.ident = paste0(loc_ID, ":", symbol)) %>%
   filter(name.ident%in%H3K27ac_CTCF_intersect_log2FC_corr$name.ident)
+write.table(K27_GE_long_group_plot_filt, "Supplemental_tables/SupplementalTable_step4_EREG_genes_corr_rev_CTCF.txt", row.names = F,  quote = F, sep="\t")
 
 K27_GE_long_group_plot_filt <- K27_GE_long_group_plot_filt[!duplicated(K27_GE_long_group_plot_filt), ]
 length(unique(K27_GE_long_group_plot_filt$symbol))
 
 # The following should yield "character(0)"
 setdiff(K27_GE_long_group_plot_filt$symbol, H3K27ac_CTCF_intersect_log2FC_corr$symbol)
-
 length(unique(K27_GE_long_group_plot_filt$symbol)) # 45 unique genes
 nrow(K27_GE_long_group_plot_filt)/8 # 68 enhancer - gene pairs
 length(unique(K27_GE_long_group_plot_filt$loc_ID)) # 67 unique enhancers
@@ -462,8 +464,10 @@ GO_BP <- enrichGO(gene = unique_symbols,
 head(as.data.frame(GO_BP))
 View(as.data.frame(GO_BP))
 
-  library(dplyr)
-  library(ggplot2)
+write.table(as.data.frame(GO_BP), "Supplemental_tables/SupplementalTable_GO_BP_EREG_genes.txt", row.names = F, sep="\t", quote=F)
+
+library(dplyr)
+library(ggplot2)
   plot_me_ordered <- GO_BP[order(GO_BP$p.adjust), ]
   plot_me_ordered <- plot_me_ordered[1:12, ]
   plot_me_ordered <- plot_me_ordered[order(plot_me_ordered$Count), ]
@@ -473,7 +477,7 @@ View(as.data.frame(GO_BP))
   ggplot(plot_me_ordered, aes(x=factor(Description, levels=name_order), fill=-log10(p.adjust), y=Count)) +
     geom_bar(stat="identity") +
     coord_flip() +
-    scale_fill_gradient(low = "#808b96", high = "black", 
+    scale_fill_gradient(name="q value", low = "#808b96", high = "black", 
     limits = c(2, 6), breaks = c(2, 4, 6))+
     theme_classic() +
     theme(text=element_text(size = 18)) +
