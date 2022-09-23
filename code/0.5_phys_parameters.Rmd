@@ -1,0 +1,124 @@
+---
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'Physiological parameters mice upon sacrifice'
+author: 'Christian Sommerauer & Carlos Gallardo'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-0):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+phys_parameters <- read.delim("/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/data/220923_physio_parameters.txt")
+```
+# Calculate means and standard deviations
+```{r}
+phys_para_avg_sd <- phys_parameters %>%
+  group_by(group) %>%
+  mutate(liver_average = mean(liver)) %>%
+  mutate(glucose_average = mean(glucose)) %>%
+  mutate(tot_weight_average = mean(total_weight)) %>%
+  mutate(liver_sd = sd(liver)) %>%
+  mutate(glucose_sd = sd(glucose)) %>%
+  mutate(tot_weight_sd = sd(total_weight))
+```
+
+```{r}
+order_me <- c("CD_fe", "HFD_fe", "CD_ma", "HFD_ma",  "DPN", "DIP", "E2", "PPT")
+
+# Plot the total weight
+ggplot(phys_para_avg_sd, 
+       aes(x=factor(group,levels=order_me),
+           y = tot_weight_average)) +
+  geom_errorbar(aes(ymin=tot_weight_average-tot_weight_sd, 
+                    ymax=tot_weight_average+tot_weight_sd), 
+                    width = 0.5, color="black") +
+  geom_col(aes(fill=factor(group, levels=order_me)), position= "dodge", color="black") +
+  geom_point(aes(y = total_weight),shape=21,size=4, color="#5a6664", fill="#daf6f1", alpha=0.8) +
+  theme_bw() +
+  theme_classic()+
+  theme(axis.text.x = element_text(angle=90, size = 20,  vjust = 0.5, hjust = 0.95),
+        axis.text.y = element_text(size = 20),
+        axis.title.y = element_text(size = 15),
+        legend.position = "none") +
+  scale_y_continuous(limits = c(0, 55)) +
+  scale_x_discrete(labels = c("CDf", "HFDf", "CDm", "HFDm", "DPN", "DIP", "E2", "PPT")) + 
+  scale_fill_manual(values = c("#E88AB5","#B02262","#7F9AD7", "#2A2E72","#7DC7D1",  "#339ACD", "#356FB5", "#2A40AB")) +
+  xlab("") +
+  ylab("average total weight in grams")
+
+ggsave("/Users/christiansom/Dropbox/MAFLD_Figure_drafts/Figures/FigureS1/220923_phys_param_totWeight_HFDm4.pdf", height = 15,width = 15, units = "cm")
+
+
+# Plot the liver weight
+ggplot(phys_para_avg_sd, 
+       aes(x=factor(group,levels=order_me),
+           y = liver_average)) +
+  geom_errorbar(aes(ymin=liver_average-liver_sd, 
+                    ymax=liver_average+liver_sd), 
+                    width = 0.5, color="black") +
+  geom_col(aes(fill=factor(group, levels=order_me)), position= "dodge", color="black") +
+  geom_point(aes(y = liver),shape=21,size=4, color="#5a6664", fill="#daf6f1", alpha=0.8) +
+  theme_bw() +
+  theme_classic()+
+  theme(axis.text.x = element_text(angle=90, size = 20,  vjust = 0.5, hjust = 0.95),
+        axis.text.y = element_text(size = 20),
+        axis.title.y = element_text(size = 15),
+        legend.position = "none") +
+  scale_y_continuous(limits = c(0, 2.5)) +
+  scale_x_discrete(labels = c("CDf", "HFDf", "CDm", "HFDm", "DPN", "DIP", "E2", "PPT")) + 
+  scale_fill_manual(values = c("#E88AB5","#B02262","#7F9AD7", "#2A2E72","#7DC7D1",  "#339ACD", "#356FB5", "#2A40AB")) +
+  xlab("") +
+  ylab("average liver weight in grams")
+
+ggsave("/Users/christiansom/Dropbox/MAFLD_Figure_drafts/Figures/FigureS1/220923_phys_param_liverWeight_HFDm4.pdf", height = 15,width = 15, units = "cm")
+
+# Plot the blood glucose 2h before sacrifice 
+ggplot(phys_para_avg_sd, 
+       aes(x=factor(group,levels=order_me),
+           y = glucose_average)) +
+  geom_errorbar(aes(ymin=glucose_average-glucose_sd, 
+                    ymax=glucose_average+glucose_sd), 
+                    width = 0.5, color="black") +
+  geom_col(aes(fill=factor(group, levels=order_me)), position= "dodge", color="black") +
+  geom_point(aes(y = glucose),shape=21,size=4, color="#5a6664", fill="#daf6f1", alpha=0.8) +
+  theme_bw() +
+  theme_classic()+
+  theme(axis.text.x = element_text(angle=90, size = 20,  vjust = 0.5, hjust = 0.95),
+        axis.text.y = element_text(size = 20),
+        axis.title.y = element_text(size = 15),
+        legend.position = "none") +
+  scale_y_continuous(limits = c(0, 13)) +
+  scale_x_discrete(labels = c("CDf", "HFDf", "CDm", "HFDm", "DPN", "DIP", "E2", "PPT")) + 
+  scale_fill_manual(values = c("#E88AB5","#B02262","#7F9AD7", "#2A2E72","#7DC7D1",  "#339ACD", "#356FB5", "#2A40AB")) +
+  xlab("") +
+  ylab("average fasting glucose \n(2h) mmol/liter")
+
+ggsave("/Users/christiansom/Dropbox/MAFLD_Figure_drafts/Figures/FigureS1/220923_phys_param_glucose_HFDm4.pdf", height = 15,width = 15, units = "cm")
+```
+# Perform statistical tests
+```{r}
+total <- aov(phys_parameters$total_weight ~ phys_parameters$group)
+TukeyHSD(total)
+
+liver <- aov(phys_parameters$liver ~ phys_parameters$group)
+TukeyHSD(liver)
+
+glucose <- aov(phys_parameters$glucose ~ phys_parameters$group)
+TukeyHSD(glucose)
+```
+
