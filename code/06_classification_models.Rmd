@@ -27,6 +27,7 @@ library(ComplexHeatmap)
 library(caret)
 library(multiROC)
 library(patchwork)
+library(ggpubr)
 
 ```
 
@@ -165,10 +166,6 @@ Heatmap(human_stage, width = unit(24, "mm"),name = "Stage",
         row_title = c("Cluster 1", "Cluster 2", "Cluster 3", "Cluster 4"),
         cluster_row_slices = FALSE, 
         column_order=c("CTRL", "NAFL", "NASH")) +
-  Heatmap(mouse_log2FC_HFDmVsCDm, width = unit(8, "mm"), name = "Male mouse log2FC",
-          col = colPals$RdBu[c(10,2)]) +
-  Heatmap(mouse_log2FC_HFDfVsCDf, width = unit(8, "mm"), name = "Female mouse log2FC",
-          col = c(colPals$RdBu[c(10,2)], '#F6F6F6')) +
   Heatmap(human_steatosis, width = unit(72, "mm"),name = "Steatosis",
           column_order=paste0('NAS', seq(0,8)),
           col = circlize::colorRamp2(breaks=seq(-max(abs(human_steatosis)), max(abs(human_steatosis)), length.out=11),
@@ -176,7 +173,11 @@ Heatmap(human_stage, width = unit(24, "mm"),name = "Stage",
   Heatmap(human_fibrosis, width = unit(40, "mm"),name = "Fibrosis",
           column_order=paste0('F', seq(0,4)),
           col = circlize::colorRamp2(breaks=seq(-max(abs(human_fibrosis)), max(abs(human_fibrosis)), length.out=11),
-                                     colors=colPals$RdBu))
+                                     colors=colPals$RdBu)) +
+  Heatmap(mouse_log2FC_HFDmVsCDm, width = unit(8, "mm"), name = "Male mouse log2FC",
+          col = colPals$RdBu[c(10,2)]) +
+  Heatmap(mouse_log2FC_HFDfVsCDf, width = unit(8, "mm"), name = "Female mouse log2FC",
+          col = c(colPals$RdBu[c(10,2)], '#F6F6F6'))
 
 ```
 
@@ -475,6 +476,10 @@ df <- cohort_data$Govaere$cpm_filt %>%
 p[[1]] <- ggplot(df, aes(x=Stage, y=SULF2, fill=Stage, color=Stage)) +
   geom_violin(lwd=1, alpha=0.6, color='black') +
   ggbeeswarm::geom_quasirandom(width = 0.2, color='black') +
+  stat_compare_means(method = 't.test', 
+                     comparisons = list(c('CTRL','NAFL'), c('NAFL','NASH'), c('CTRL','NASH')),
+                     label.y = c(100,125,150)) +
+  stat_compare_means(method = 'anova', label.y = 170) +
   scale_fill_manual(values = colPals$stage) +
   scale_color_manual(values = colPals$stage) +
   ggtitle('Stage') +
@@ -484,6 +489,10 @@ p[[1]] <- ggplot(df, aes(x=Stage, y=SULF2, fill=Stage, color=Stage)) +
 p[[2]] <- ggplot(df, aes(x=NAS_class, y=SULF2, fill=NAS_class, color=NAS_class)) +
   geom_violin(lwd=1, alpha=0.6, color='black') +
   ggbeeswarm::geom_quasirandom(width = 0.2, color='black') +
+  stat_compare_means(method = 't.test', 
+                     comparisons = list(c('low','mid'), c('mid','high'), c('low','high')),
+                     label.y = c(120,135,150)) +
+  stat_compare_means(method = 'anova', label.y = 170) +
   scale_fill_manual(values = colPals$NAS) +
   scale_color_manual(values = colPals$NAS) +
   ggtitle('NAS') +
@@ -493,6 +502,10 @@ p[[2]] <- ggplot(df, aes(x=NAS_class, y=SULF2, fill=NAS_class, color=NAS_class))
 p[[3]] <- ggplot(df, aes(x=Fibrosis_class, y=SULF2, fill=Fibrosis_class, color=Fibrosis_class)) +
   geom_violin(lwd=1, alpha=0.6, color='black') +
   ggbeeswarm::geom_quasirandom(width = 0.2, color='black') +
+  stat_compare_means(method = 't.test', 
+                     comparisons = list(c('low','mid'), c('mid','high'), c('low','high')),
+                     label.y = c(125,140,155)) +
+  stat_compare_means(method = 'anova', label.y = 170) +
   scale_fill_manual(values = colPals$fibrosis) +
   scale_color_manual(values = colPals$fibrosis) +
   ggtitle('Fibrosis') +
@@ -501,8 +514,10 @@ p[[3]] <- ggplot(df, aes(x=Fibrosis_class, y=SULF2, fill=Fibrosis_class, color=F
 
 patchwork::wrap_plots(p, nrow=1, ncol=3, byrow=T)
 
+```
 
-# Significances (anova)
+```{r}
+# significance of multiple comparisons from ANOVA using Tukey
 SULF2_Stage_aov <- aov(df$SULF2 ~ df$Stage)
 SULF2_fib_aov <- aov(df$SULF2 ~ df$Fibrosis_class)
 SULF2_NAS_aov <- aov(df$SULF2 ~ df$NAS_class)
@@ -510,12 +525,6 @@ TukeyHSD(SULF2_Stage_aov)
 TukeyHSD(SULF2_fib_aov)
 TukeyHSD(SULF2_NAS_aov)
 
-THBS2_Stage_aov <- aov(df$THBS2 ~ df$Stage)
-THBS2_fib_aov <- aov(df$THBS2 ~ df$Fibrosis_class)
-THBS2_NAS_aov <- aov(df$THBS2 ~ df$NAS_class)
-TukeyHSD(THBS2_Stage_aov)
-TukeyHSD(THBS2_fib_aov)
-TukeyHSD(THBS2_NAS_aov)
 ```
 
 
@@ -527,6 +536,10 @@ p <- list()
 p[[1]] <- ggplot(df, aes(x=Stage, y=THBS2, fill=Stage, color=Stage)) +
   geom_violin(lwd=1, alpha=0.6, color='black') +
   ggbeeswarm::geom_quasirandom(width = 0.2, color='black') +
+  stat_compare_means(method = 't.test', 
+                     comparisons = list(c('CTRL','NAFL'), c('NAFL','NASH'), c('CTRL','NASH')),
+                     label.y = c(30,75,90)) +
+  stat_compare_means(method = 'anova', label.y = 120) +
   scale_fill_manual(values = colPals$stage) +
   scale_color_manual(values = colPals$stage) +
   ggtitle('Stage') +
@@ -536,6 +549,10 @@ p[[1]] <- ggplot(df, aes(x=Stage, y=THBS2, fill=Stage, color=Stage)) +
 p[[2]] <- ggplot(df, aes(x=NAS_class, y=THBS2, fill=NAS_class, color=NAS_class)) +
   geom_violin(lwd=1, alpha=0.6, color='black') +
   ggbeeswarm::geom_quasirandom(width = 0.2, color='black') +
+  stat_compare_means(method = 't.test', 
+                     comparisons = list(c('low','mid'), c('mid','high'), c('low','high')),
+                     label.y = c(75,90,105)) +
+  stat_compare_means(method = 'anova', label.y = 120) +
   scale_fill_manual(values = colPals$NAS) +
   scale_color_manual(values = colPals$NAS) +
   ggtitle('NAS') +
@@ -545,6 +562,10 @@ p[[2]] <- ggplot(df, aes(x=NAS_class, y=THBS2, fill=NAS_class, color=NAS_class))
 p[[3]] <- ggplot(df, aes(x=Fibrosis_class, y=THBS2, fill=Fibrosis_class, color=Fibrosis_class)) +
   geom_violin(lwd=1, alpha=0.6, color='black') +
   ggbeeswarm::geom_quasirandom(width = 0.2, color='black') +
+  stat_compare_means(method = 't.test', 
+                     comparisons = list(c('low','mid'), c('mid','high'), c('low','high')),
+                     label.y = c(50,75,90)) +
+  stat_compare_means(method = 'anova', label.y = 120) +
   scale_fill_manual(values = colPals$fibrosis) +
   scale_color_manual(values = colPals$fibrosis) +
   ggtitle('Fibrosis') +
@@ -552,6 +573,17 @@ p[[3]] <- ggplot(df, aes(x=Fibrosis_class, y=THBS2, fill=Fibrosis_class, color=F
   theme(legend.position='none')
 
 patchwork::wrap_plots(p, nrow=1, ncol=3, byrow=T)
+
+```
+
+```{r}
+# significance of multiple comparisons from ANOVA using Tukey
+THBS2_Stage_aov <- aov(df$THBS2 ~ df$Stage)
+THBS2_fib_aov <- aov(df$THBS2 ~ df$Fibrosis_class)
+THBS2_NAS_aov <- aov(df$THBS2 ~ df$NAS_class)
+TukeyHSD(THBS2_Stage_aov)
+TukeyHSD(THBS2_fib_aov)
+TukeyHSD(THBS2_NAS_aov)
 
 ```
 

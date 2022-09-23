@@ -122,6 +122,14 @@ gsea_net_clusters <- read.table(
   header = TRUE,
   quote = '')
 
+# load nodes for reproducibility
+nodes <- read.table(
+  file = 'results/bulkRNAseq_mmus_GSEA_reactome_network_nodes.tsv',
+  stringsAsFactors = FALSE,
+  sep = '\t',
+  header = TRUE,
+  quote = '')
+
 # generate reduced network
 # collapse clusters and correlate according to NES profiles
 gsea_net_reduced <- list()
@@ -169,7 +177,7 @@ gsea_net_reduced$edges <- lapply(comb, function(x) {
              size = length(dplyr::intersect(genes.x, genes.y)))
 }) %>% 
   dplyr::bind_rows() %>% 
-  dplyr::filter(!duplicated(select(., -c('source', 'target', 'genes')))) %>% 
+  dplyr::filter(!duplicated(dplyr::select(., -c('source', 'target', 'genes')))) %>% 
   dplyr::filter(source != target & weight>0.9) # filter edges to cor >0.9 or <-0.9
 
 # write.table(gsea_net_reduced$nodes,
