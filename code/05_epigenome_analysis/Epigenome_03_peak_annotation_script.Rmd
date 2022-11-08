@@ -50,7 +50,7 @@ import_list2[[i]] <- object
 
 #listEnsemblArchives()
 mart <- useMart(biomart = "ensembl", dataset = "mmusculus_gene_ensembl", host = "https://sep2019.archive.ensembl.org")
-# use the getAnnotation function to obtain the TSS for ensembl GRCh38.p13.
+# use the getAnnotation function to obtain the TSS
 annoData <- getAnnotation(mart, featureType = "TSS")
 
 # Annotate the peak files.
