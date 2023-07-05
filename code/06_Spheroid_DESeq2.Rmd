@@ -1,4 +1,24 @@
 
+---
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'Spheroid RNA-seq - Differential expression analysis'
+author: 'Christian Sommerauer & Carlos Gallardo'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-0):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+
+```
+
 # Load packages
 ```{r}
 library(tidyverse)
@@ -9,55 +29,37 @@ library(biomaRt)
 
 # Load featureCount table
 ```{r}
-count_table <- read.table("/Users/christiansom/Documents/230525_spheroid_analyis/hisat2_aligned_featurecounts/raw_fq_featurecounts.txt", header=T)
+count_table <- read.table("data/raw_fq_featurecounts_inhibitors_spheroids.txt", header=T)
 
-count_table.2 <- count_table %>% dplyr::select(-2,-3,-4,-5) 
+count_table.2 <- count_table %>% dplyr::select(-2,-3,-4,-5)
+
 names(count_table.2) <- gsub("hisat2_aligned\\.|\\.bam", "", names(count_table.2))
 
 # Extract the numeric part after "S" using regular expression
-numeric_part <- as.numeric(gsub(".*S(\\d+)", "\\1", colnames(count_table.2)[3:20]))
+numeric_part <- as.numeric(gsub(".*S(\\d+)", "\\1", colnames(count_table.2)[3:10]))
 numeric_part <- numeric_part+2
 numeric_part <- c(1,2, numeric_part)
 
 # Sort the column names and corresponding columns based on the numeric part
 sorted_indices <- order(numeric_part)
 sorted_header_names <- colnames(count_table.2)[sorted_indices]
-sorted_table <- count_table.2[, sorted_indices]
-
-write.table(sorted_table, "230531_non_norm_Sorted_counttable_spheroids.txt", sep="\t", quote=F, row.names = F)
-
+sorted_table_inhibitors <- count_table.2[, sorted_indices]
+sorted_table_inhibitors <- sorted_table_inhibitors %>% tibble::column_to_rownames("Geneid") %>% dplyr::select(2:9) 
 print(sorted_header_names)
-print(sorted_table)
-
-# Make separate tables for siRNA and inhibitors
-sorted_table_siRNA <- sorted_table %>% tibble::column_to_rownames("Geneid") %>% dplyr::select(2:10) 
-sorted_table_inhibitors <- sorted_table %>% tibble::column_to_rownames("Geneid") %>% dplyr::select(11:19, -16) 
+print(sorted_table_inhibitors)
 ```
 # Design metatables
 ```{r}
-sample_name_siRNA <- names(sorted_table_siRNA)
 sample_name_inhibitors <- names(sorted_table_inhibitors)
-replicate_siRNA <- c(rep(c(1:3),3))
 replicate_inhibitors <- c(1,2,3,1,2,1,2,3)
-Condition_siRNA <- c(rep("siNT",3), rep("siTEAD1",3), rep("siSLC16A5",3)) 
-Condition_inhibitors <- c(rep("plusFFA",3), rep("TEAD1_inh",2), rep("panTEAD_inh",3))
-
-meta_table_siRNA <- data.frame(Sample=sample_name_siRNA, Condition=Condition_siRNA, Replicate=replicate_siRNA)
+Condition_inhibitors <- c(rep("plusFFA",3), rep("TEADap",2), rep("TEADsf",3))
 meta_table_inhibitors <- data.frame(Sample=sample_name_inhibitors, Condition=Condition_inhibitors, Replicate=replicate_inhibitors)
-write.table(meta_table_inhibitors, "230531_meta_table_inhibitor_grpTrsfm.txt", quote = F, sep="\t", row.names = F)
 ```
 # Export TPM-normalized count table
 ```{r}
-# for siRNA table
-sorted_table_siRNA_TPM <- normalizeData(x=sorted_table_siRNA, method = "TPM", len = sorted_table$Length)
-colSums(sorted_table_siRNA_TPM) # all 1 million, good
-# for inhibitor table
+# normalize to TPM
+source("code/00_helper_functions.R") # @ Carlos have to change the nontibble part
 sorted_table_inhibitors_TPM <- normalizeData(x=sorted_table_inhibitors, method = "TPM", len = sorted_table$Length) 
-
-sorted_table_siRNA_TPM_mean <- groupTransform_nontibble(x=sorted_table_siRNA_TPM, 
-               group.lbls = meta_table_siRNA$Condition,
-               FUN=function(x) apply(x, 1, mean)) %>% 
-              tibble::rownames_to_column("ensembl_gene_id")
 
 sorted_table_inhibitors_TPM_mean <- groupTransform_nontibble(x=sorted_table_inhibitors_TPM, 
                group.lbls = meta_table_inhibitors$Condition,
@@ -65,47 +67,23 @@ sorted_table_inhibitors_TPM_mean <- groupTransform_nontibble(x=sorted_table_inhi
               tibble::rownames_to_column("ensembl_gene_id")
 
 # move the rownames to column
-sorted_table_siRNA_TPM <- sorted_table_siRNA_TPM %>% 
-              tibble::rownames_to_column("ensembl_gene_id")
 sorted_table_inhibitors_TPM <- sorted_table_inhibitors_TPM %>% 
               tibble::rownames_to_column("ensembl_gene_id")
+
 # Add the external_gene_names and export the tables.
 mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl", host = "https://oct2022.archive.ensembl.org")
 # use the getAnnotation function to obtain relevant features for ensembl GRCh38.p13.
 annoData <- getBM(attributes=c("ensembl_gene_id","external_gene_name", "description"),mart=mart)
 
-export_TPM_normTables <- list(sorted_table_siRNA_TPM=sorted_table_siRNA_TPM, 
-                              sorted_table_inhibitors_TPM=sorted_table_inhibitors_TPM, 
-                              sorted_table_siRNA_TPM_mean=sorted_table_siRNA_TPM_mean, 
+export_TPM_normTables <- list(sorted_table_inhibitors_TPM=sorted_table_inhibitors_TPM, 
                               sorted_table_inhibitors_TPM_mean=sorted_table_inhibitors_TPM_mean)
 
 export_TPM_normTables <- lapply(export_TPM_normTables, inner_join, y = annoData, by = 'ensembl_gene_id')
-saveRDS(export_TPM_normTables, "230531_exported_TPM_spheroids.txt")
+
+write.table(export_TPM_normTables, "results/spheroid_TPM_norm_counts.txt", sep="\t", quote=F)
 ```
 
-# For siRNAs
-```{r}
-ds_data_siRNA <- DESeqDataSetFromMatrix(countData = sorted_table_siRNA,
-                                 colData = meta_table_siRNA,
-                                 design = ~ 0 + Condition)
-ds_data_siRNA <- estimateSizeFactors(ds_data_siRNA)
-ds_data_siRNA <- DESeq(ds_data_siRNA)
-
-# filtering to minimum 10 counts in at least 2 samples
-ds_data_siRNA.filt <- ds_data_siRNA[rowSums(counts(ds_data_siRNA, normalized=TRUE) >= 10 ) >= 2, ]
-
-vsd_siRNA <- vst(ds_data_siRNA.filt)
-
-PCA.to.plot_siRNA <- plotPCA(vsd_siRNA, intgroup=c("Condition")) + theme_bw() +  ggtitle("PCA of RNA-Seq Samples (DESeq2, vst)") 
-PCA.to.plot_siRNA
-ggplot(PCA.to.plot_siRNA$data, aes(x=PC1, y=PC2, fill=group), color="black") + 
-  geom_point(shape=21, size=7) +
-  theme_light() +
-  ylab("PC2 - 20% variance explained") + # took the number from the original plotPCA function
-  xlab("PC1 - 58% variance explained")
-```
-
-# For inhibitors
+# Run DESeq2 function and plot a PCA
 ```{r}
 ds_data_inhibitors <- DESeqDataSetFromMatrix(countData = sorted_table_inhibitors,
                                  colData = meta_table_inhibitors,
@@ -128,23 +106,15 @@ ggplot(PCA.to.plot_inhibitors$data, aes(x=PC1, y=PC2, fill=group), color="black"
 ```
 
 ```{r}
-DESeq2_DEGs_siRNA <- list()
 DESeq2_DEGs_inhibitors <- list()
 # comparisons
-DESeq2_DEGs_siRNA$unfilt <- list(
-  siTEAD1_vs_siNT = results(ds_data_siRNA.filt, contrast = c('Condition', 'siTEAD1', 'siNT')),
-  siSLC16A5_vs_siNT = results(ds_data_siRNA.filt, contrast = c('Condition', 'siSLC16A5', 'siNT')))
-
 DESeq2_DEGs_inhibitors$unfilt <- list(
-  TEAD1_vs_control = results(ds_data_inhibitors.filt, contrast = c('Condition', 'TEAD1_inh', 'plusFFA')),
-  panTEAD_vs_control = results(ds_data_inhibitors.filt, contrast = c('Condition', 'panTEAD_inh', 'plusFFA')))
+  TEADap_vs_control = results(ds_data_inhibitors.filt, contrast = c('Condition', 'TEADap', 'plusFFA')),
+  TEADsf_vs_control = results(ds_data_inhibitors.filt, contrast = c('Condition', 'TEADsf', 'plusFFA')))
 
-names(DESeq2_DEGs_siRNA$unfilt)
 names(DESeq2_DEGs_inhibitors$unfilt)
-# add annotation to DEG lists
-DESeq2_DEGs_siRNA$unfilt <- lapply(DESeq2_DEGs_siRNA$unfilt, as.data.frame)
-DESeq2_DEGs_siRNA$unfilt <- lapply(DESeq2_DEGs_siRNA$unfilt, rownames_to_column, var = 'ensembl_gene_id')
 
+# add annotation to DEG lists
 DESeq2_DEGs_inhibitors$unfilt <- lapply(DESeq2_DEGs_inhibitors$unfilt, as.data.frame)
 DESeq2_DEGs_inhibitors$unfilt <- lapply(DESeq2_DEGs_inhibitors$unfilt, rownames_to_column, var = 'ensembl_gene_id')
 
@@ -153,14 +123,7 @@ mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl", host = "
 # use the getAnnotation function to obtain relevant features for ensembl GRCh38.p13.
 annoData <- getBM(attributes=c("ensembl_gene_id","external_gene_name", "chromosome_name", "gene_biotype", "description"),mart=mart)
 
-DESeq2_DEGs_siRNA$unfilt <- lapply(DESeq2_DEGs_siRNA$unfilt, inner_join, y = annoData, by = 'ensembl_gene_id')
 DESeq2_DEGs_inhibitors$unfilt <- lapply(DESeq2_DEGs_inhibitors$unfilt, inner_join, y = annoData, by = 'ensembl_gene_id')
-
-DEG_counts_siRNA <- vector()
-for (i in 1:2) { 
-DESeq2_DEGs_siRNA$filt[[i]] <- DESeq2_DEGs_siRNA$unfilt[[i]] %>% filter(abs(log2FoldChange) > 0.585 & padj<0.05)
-DEG_counts_siRNA[i] <- nrow(DESeq2_DEGs_siRNA$filt[[i]])
-} 
 
 DEG_counts_inhibitors <- vector()
 for (i in 1:2) { 
@@ -168,45 +131,18 @@ DESeq2_DEGs_inhibitors$filt[[i]] <- DESeq2_DEGs_inhibitors$unfilt[[i]] %>% filte
 DEG_counts_inhibitors[i] <- nrow(DESeq2_DEGs_inhibitors$filt[[i]])
 } 
 
-names(DESeq2_DEGs_siRNA$filt) = names(DESeq2_DEGs_siRNA$unfilt)
 names(DESeq2_DEGs_inhibitors$filt) = names(DESeq2_DEGs_inhibitors$unfilt)
 
-DEG_counts_siRNA <- data.frame(Condition = names(DESeq2_DEGs_siRNA$filt), DEG_counts = DEG_counts_siRNA)
-write.table(DEG_counts_siRNA, "230525_number_of_DEGs_log2FC_0585_padj_0.05_siRNAs.txt", quote=F, sep="\t")
-
 DEG_counts_inhibitors <- data.frame(Condition = names(DESeq2_DEGs_inhibitors$filt), DEG_counts = DEG_counts_inhibitors)
-write.table(DEG_counts_inhibitors, "230525_number_of_DEGs_log2FC_0585_padj_0.05_inhibitors.txt", quote=F, sep="\t")
-
-ggplot(DEG_counts_siRNA, aes(x=DEG_counts, y=factor(Condition, levels=rev(names(DESeq2_DEGs_siRNA$unfilt))))) +
-  geom_col() +
-  theme_classic() +
-  ylab("")
 
 ggplot(DEG_counts_inhibitors, aes(x=DEG_counts, y=factor(Condition, levels=rev(names(DESeq2_DEGs_inhibitors$unfilt))))) +
   geom_col() +
   theme_classic() +
   ylab("")
 
-saveRDS(DESeq2_DEGs_siRNA, "230525_siRNAs_DEGlists.rds")
-saveRDS(DESeq2_DEGs_inhibitors, "230525_inhibitors_DEGlists.rds")
-
-## siRNA filtered and unfiltered tables
-
-### filtered
-write.table(DESeq2_DEGs_siRNA$filt$siSLC16A5_vs_siNT, "230525_exported_DESeq2_tables/230525_DEGs_log2FC_0585_padj_0.05_siSLC16A5_vs_siNT.txt", quote=F, sep="\t")
-write.table(DESeq2_DEGs_siRNA$filt$siTEAD1_vs_siNT, "230525_exported_DESeq2_tables/230525_DEGs_log2FC_0585_padj_0.05_siTEAD1_vs_siNT.txt", quote=F, sep="\t")
-### unfiltered
-write.table(DESeq2_DEGs_siRNA$unfilt$siSLC16A5_vs_siNT, "230525_exported_DESeq2_tables/230525_DEGs_unfiltered_siSLC16A5_vs_siNT.txt", quote=F, sep="\t")
-write.table(DESeq2_DEGs_siRNA$unfilt$siTEAD1_vs_siNT, "230525_exported_DESeq2_tables/230525_DEGs_unfiltered_siTEAD1_vs_siNT.txt", quote=F, sep="\t")
-
-## inhibitors filtered and unfiltered tables
-### filtered
-write.table(DESeq2_DEGs_inhibitors$filt$panTEAD_vs_control, "230525_exported_DESeq2_tables/230525_DEGs_log2FC_0585_padj_0.05_panTEAD_vs_control.txt", quote=F, sep="\t")
-write.table(DESeq2_DEGs_inhibitors$filt$TEAD1_vs_control, "230525_exported_DESeq2_tables/230525_DEGs_log2FC_0585_padj_0.05_TEAD1_vs_control.txt", quote=F, sep="\t")
-### unfiltered
-write.table(DESeq2_DEGs_inhibitors$unfilt$TEAD1_vs_control, "230525_exported_DESeq2_tables/230525_DEGs_unfiltered_TEAD1_vs_control.txt", quote=F, sep="\t")
-write.table(DESeq2_DEGs_inhibitors$unfilt$panTEAD_vs_control, "230525_exported_DESeq2_tables/230525_DEGs_unfiltered_panTEAD_vs_control.txt", quote=F, sep="\t")
+saveRDS(DESeq2_DEGs_inhibitors, "results/Spheroid_inhibitors_DEGlists.rds")
 ```
+
 ```{r}
 sessionInfo()
 ```
