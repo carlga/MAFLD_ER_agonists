@@ -24,7 +24,7 @@ library(tidyverse)
 
 # Load the fully annotated table and filter the relevant 38 genes. Create a dataframe with all annotations.
 ```{r}
-cohort.rds <- readRDS("/Users/christian.som/Documents/GitHub/MAFLD_ER_agonists/data/bulkRNAseq_human_cohort_data.rds")
+cohort.rds <- readRDS("/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/data/bulkRNAseq_human_cohort_data.rds")
 my_38genes <- scan('results/ER_regulated_genes.txt', what = character(), quiet = T)
 
 mouse_human_orthologs <- read.table(
