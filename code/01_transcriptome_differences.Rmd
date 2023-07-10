@@ -23,7 +23,7 @@ knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
 source('code/00_helper_functions.R')
 library(tidyverse)
 library(DESeq2)
-library(VennDiagram)
+library(ggvenn)
 library(clusterProfiler)
 library(org.Mm.eg.db)
 library(ggrepel)
@@ -217,6 +217,18 @@ venn.plot <- venn.diagram(
 
 grid.draw(venn.plot)
 
+
+# Create Data
+venn <- list("CDf_HFDf (n=327)" = sort(CDf_HFDf$ensembl_gene_id),
+                  "CDm_HFDm (n=714)"= CDm_HFDm$ensembl_gene_id)
+  
+# Create venn diagram Pairwise
+ggvenn(venn, c("CDm_HFDm (n=714)", "CDf_HFDf (n=327)"),
+       auto_scale=TRUE,
+       fill_color = c("#2A2E72", "#B02262"))
+
+
+
 # Make intersection to extract the genes names from Venn.
 intersections <- list("", "", "")
 names(intersections) <- c("shared_genes", "CDf_HFDf_unique", "CDm_HFDm_unique")
@@ -256,15 +268,18 @@ GO_list$GO.top8[[i]] <- GO_list$GO.results[[i]]@result %>% filter(p.adjust<0.05)
 
 GO_list$term.order.plotting[[i]] <- GO_list$GO.top8[[i]] %>% dplyr::pull("Description")
 
-print(ggplot(GO_list$GO.top8[[i]], aes(x=Count, y=factor(Description, levels=rev(GO_list$term.order.plotting[[i]])))) +
-  geom_col(aes(fill=-log10(p.adjust))) +
+print(ggplot(GO_list$GO.top8[[i]], aes(x=factor(""), y=factor(Description, levels=rev(GO_list$term.order.plotting[[i]])))) +
+  geom_point(shape=21, aes(size=Count, fill=-log10(p.adjust))) +
   theme_classic() +
   xlab("") +
   ylab("") +
   ggtitle(paste(unique(GO_list$GO.top8[[i]]$GeneSet))) +
-  scale_fill_gradient(low="grey", high= "black", limits=c(1,13)))
+  scale_fill_gradient(low="grey", high= "black", limits=c(1,15)))
 
-} 
+# Can remove in final version
+ggsave(filename = paste0("/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/results/",unique(GO_list$GO.top8[[i]]$GeneSet), ".pdf"), width=15, height=12, units="cm")
+
+ } 
 ```
 
 

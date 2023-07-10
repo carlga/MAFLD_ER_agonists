@@ -155,7 +155,7 @@ colSums(counts_enha_norm2[,])
 
 counts_enha_norm2.1 <- counts_enha_norm2 %>% rownames_to_column("loc_ID")
 K27_GE_joined <- inner_join(chrom_TPM2, counts_enha_norm2.1, by="loc_ID")
-View(K27_GE_joined)
+#View(K27_GE_joined)
 
 table(K27_GE_joined$query_ID) 
 
@@ -191,7 +191,7 @@ K27_GE_long_group <- K27_GE_long_dd %>% group_by(loc_ID, query_ID) %>%
   mutate(correlation_spearman = cor(Gene_expression, H3K27ac, method="spearman"))
 
 # Export a table for all EREG with correlations BEFORE filtering anything.
-write.table(K27_GE_long_group, "Supplemental_tables/SupplementalTable_Initial_EREG_genes_corr.txt", quote=F, row.names=F, sep="\t")
+#write.table(K27_GE_long_group, "Supplemental_tables/SupplementalTable_Initial_EREG_genes_corr.txt", quote=F, row.names=F, sep="\t")
 
 # Filter the EREGs for a | pearson correlation |  > 0.75
 K27_GE_long_group_plot_pearson <- K27_GE_long_group %>%
@@ -199,7 +199,7 @@ K27_GE_long_group_plot_pearson <- K27_GE_long_group %>%
   group_by(loc_ID, query_ID) %>%
   mutate(name.ident = paste0(symbol, "_", loc_ID))
 nrow(K27_GE_long_group_plot_pearson)/8  # 764 enhancer gene pairs remain.
-write.table(K27_GE_long_group_plot_pearson, "Supplemental_tables/SupplementalTable_step2_EREG_genes_corr_0.75pearson.txt", quote=F, row.names=F, sep="\t")
+#write.table(K27_GE_long_group_plot_pearson, "Supplemental_tables/SupplementalTable_step2_EREG_genes_corr_0.75pearson.txt", quote=F, row.names=F, sep="\t")
 
 # Also for spearman, but is not used in the end.
 K27_GE_long_group %>%
@@ -215,7 +215,7 @@ K27_GE_long_rev_insect <-  K27_GE_long_group_plot_pearson %>%
   filter(ensembl_gene_id %in% revALL)
 length(unique(K27_GE_long_rev_insect$ensembl_gene_id)) # 67 unique genes remain after filtering for reverted gene set.
 
-write.table(K27_GE_long_rev_insect, "Supplemental_tables/SupplementalTable_step3_EREG_genes_corr_0.75pearson_reverted.txt", quote=F, row.names=F, sep="\t")
+#write.table(K27_GE_long_rev_insect, "Supplemental_tables/SupplementalTable_step3_EREG_genes_corr_0.75pearson_reverted.txt", quote=F, row.names=F, sep="\t")
 ```
 #Add 50kb to intersect CTCF peaks with the H3K27ac peaks
 ```{r}
@@ -469,20 +469,22 @@ write.table(as.data.frame(GO_BP), "Supplemental_tables/SupplementalTable_GO_BP_E
 library(dplyr)
 library(ggplot2)
   plot_me_ordered <- GO_BP[order(GO_BP$p.adjust), ]
-  plot_me_ordered <- plot_me_ordered[1:12, ]
+  plot_me_ordered <- plot_me_ordered[1:10, ]
   plot_me_ordered <- plot_me_ordered[order(plot_me_ordered$Count), ]
   name_order <- plot_me_ordered %>%
     dplyr::pull("Description")
   
-  ggplot(plot_me_ordered, aes(x=factor(Description, levels=name_order), fill=-log10(p.adjust), y=Count)) +
-    geom_bar(stat="identity") +
+  ggplot(plot_me_ordered, aes(x=factor(Description, levels=name_order), fill=-log10(p.adjust), y=factor(""))) +
+    geom_point(shape=21, aes(size=Count, fill=-log10(p.adjust))) +
     coord_flip() +
-    scale_fill_gradient(name="q value", low = "#808b96", high = "black", 
+    scale_fill_gradient(low = "#808b96", high = "black", 
     limits = c(2, 6), breaks = c(2, 4, 6))+
     theme_classic() +
     theme(text=element_text(size = 18)) +
     ggtitle("") + 
-    xlab("") 
+    xlab("")
+  
+#ggsave("results/GO_plot_FigS7D.pdf", width = 18, height=12, units="cm")
 ```
 
 ```{r}
