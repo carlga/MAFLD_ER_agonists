@@ -464,7 +464,7 @@ GO_BP <- enrichGO(gene = unique_symbols,
 head(as.data.frame(GO_BP))
 View(as.data.frame(GO_BP))
 
-write.table(as.data.frame(GO_BP), "Supplemental_tables/SupplementalTable_GO_BP_EREG_genes.txt", row.names = F, sep="\t", quote=F)
+write.table(as.data.frame(GO_BP), "Supplemental_tables/SupplementalTable_GO_BP_ESEG_genes.txt", row.names = F, sep="\t", quote=F)
 
 library(dplyr)
 library(ggplot2)
