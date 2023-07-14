@@ -33,7 +33,7 @@ library(ggrepel)
 ```{r}
 # color palettes
 colPals <- list()
-colPals$conditions <- setNames(c('#E98BB6', '#B02262', '#7F9AD7', '#2A2F72', '#7DC7D1', '#339ACD', '#356FB5', '#2B40AB'),
+colPals$conditions <- setNames(c('#44AA99', '#117733', '#88CCEE', '#332288', '#DDCC77', '#CC6677', '#AA4499', '#882255'),
                                c('CDf', 'HFDf', 'CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT'))
 colPals$RdBu <- rev(RColorBrewer::brewer.pal(n=11, name = 'RdBu'))
 colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
@@ -195,29 +195,6 @@ ggplot(df, aes(x=comparison, y=value)) +
 CDf_HFDf <- DEGs$filt$CDfVsHFDf
 CDm_HFDm <- DEGs$filt$CDmVsHFDm
 
-grid.newpage()
-myCol <- c("#B02262", "#2A2E72")
-venn.plot <- venn.diagram(
-  x = list(CDf_HFDf$ensembl_gene_id, CDm_HFDm$ensembl_gene_id),
-  category.names = c("CDf_HFDf\n(n=327)", "CDm_HFDm \n(n=714)"),
-  filename = NULL,
-  output=T,
-  lwd = 2,
-  lty = 'blank',
-  fill = myCol,
-    cex = 2.5,
-        fontface = "bold",
-        fontfamily = "sans",
-  cat.cex = 1.2,
-        cat.fontface = "bold",
-        cat.default.pos = "outer",
-        cat.fontfamily = "sans",
-  cat.pos = c(-10, 10),
-        cat.dist = c(0.08, 0.08))
-
-grid.draw(venn.plot)
-
-
 # Create Data
 venn <- list("CDf_HFDf (n=327)" = sort(CDf_HFDf$ensembl_gene_id),
                   "CDm_HFDm (n=714)"= CDm_HFDm$ensembl_gene_id)
@@ -225,8 +202,7 @@ venn <- list("CDf_HFDf (n=327)" = sort(CDf_HFDf$ensembl_gene_id),
 # Create venn diagram Pairwise
 ggvenn(venn, c("CDm_HFDm (n=714)", "CDf_HFDf (n=327)"),
        auto_scale=TRUE,
-       fill_color = c("#2A2E72", "#B02262"))
-
+       fill_color = c("#332288", "#117733"))
 
 
 # Make intersection to extract the genes names from Venn.
@@ -239,7 +215,7 @@ intersections[[3]] <- setdiff(CDm_HFDm$ensembl_gene_id, intersections$shared_gen
 ```
 
 
-# Gene Ontologies (Fig S1F,G,H)
+# Gene Ontologies (Fig S1E)
 
 ```{r}
 background <- DEGs$unfilt$CDfVsCDm$ensembl_gene_id 
@@ -264,6 +240,7 @@ head(GO_list$GO.results[[i]])
 
 name.me <- c("shared_genes", "CDf_HFDf_unique", "CDm_HFDm_unique")
 
+
 GO_list$GO.top8[[i]] <- GO_list$GO.results[[i]]@result %>% filter(p.adjust<0.05) %>% mutate(GeneSet = name.me[i]) %>% dplyr::arrange(p.adjust) %>% dplyr::slice(1:8)
 
 GO_list$term.order.plotting[[i]] <- GO_list$GO.top8[[i]] %>% dplyr::pull("Description")
@@ -277,7 +254,9 @@ print(ggplot(GO_list$GO.top8[[i]], aes(x=factor(""), y=factor(Description, level
   scale_fill_gradient(low="grey", high= "black", limits=c(1,15)))
 
 # Can remove in final version
-ggsave(filename = paste0("/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/results/",unique(GO_list$GO.top8[[i]]$GeneSet), ".pdf"), width=15, height=12, units="cm")
+#ggsave(filename = paste0("/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/results/",unique(GO_list$GO.top8[[i]]$GeneSet), ".pdf"), width=15, height=12, units="cm")
+
+write.table(GO_list$GO.results[[i]]@result, paste0("Supplemental_tables/FigS1E_GO_", unique(GO_list$GO.top8[[i]]$GeneSet), ".txt"), sep="\t", quote=F, row.names = F)
 
  } 
 ```
