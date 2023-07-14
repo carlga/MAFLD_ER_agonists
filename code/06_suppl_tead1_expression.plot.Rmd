@@ -1,0 +1,106 @@
+---
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'Determining candidate genes worth following up molecularly'
+author: 'Christian Sommerauer & Carlos Gallardo'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-0):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+
+```
+# Import datasets from Minerva and other sources
+```{r}
+getwd()
+library(tidyverse)
+source("code/00_helper_functions.R")
+```
+
+```{r}
+# load anotation background from carlos (should be september 2019 also)
+annotation <- read.delim("data/ensembl_mmus_sep2019_annotation.tsv")
+
+CD_HFD_mouse.raw <-read.table(
+  file = 'data/bulkRNAseq_mmus_rawcounts.tsv',
+  stringsAsFactors = FALSE,
+  sep = '\t',
+  header = TRUE) %>%
+  tibble::column_to_rownames('geneID') %>%
+  as.matrix()
+
+CD_HFD_mouse.lengths <- read.table(
+  file = 'data/bulkRNAseq_mmus_gene_lengths.tsv',
+  stringsAsFactors = FALSE,
+  sep = '\t',
+  header = TRUE)
+
+# The CD_HFD mouse data needs to be normalized (TPM)
+CD_HFD_mouse <- normalizeData(x=CD_HFD_mouse.raw, len = CD_HFD_mouse.lengths$length, method = "TPM") %>%
+  tibble::rownames_to_column("ensembl_gene_id") %>% inner_join(annotation, .)
+
+CD_HFD_mouse2 <- data.frame(mouse_symbol = CD_HFD_mouse$external_gene_name,
+                             mouse_GeneID = CD_HFD_mouse$ensembl_gene_id,
+                             CDm = rowMeans(CD_HFD_mouse[14:17]),
+                             HFDm = rowMeans(CD_HFD_mouse[18:21]),
+                             DIP = rowMeans(CD_HFD_mouse[22:25]),
+                             DPN = rowMeans(CD_HFD_mouse[26:29]),
+                             E2 = rowMeans(CD_HFD_mouse[30:33]), 
+                             PPT = rowMeans(CD_HFD_mouse[34:36]))
+
+```
+
+```{r}
+# color palettes. 
+colPals <- list()
+colPals$conditions <- setNames(c('#44AA99', '#117733', '#88CCEE', '#332288', '#DDCC77', '#CC6677', '#AA4499', '#882255'),
+                               c('CDf', 'HFDf', 'CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT'))
+colPals$RdBu <- rev(RColorBrewer::brewer.pal(n=11, name = 'RdBu'))
+colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
+                           c('up', 'down'))
+```
+
+```{r}
+# without the females
+CD_HFD_mouse.candidates_TEAD1 <- CD_HFD_mouse2 %>%  filter(mouse_symbol == "Tead1")
+CD_HFD_mouse.candidates.long <- CD_HFD_mouse.candidates_TEAD1 %>% pivot_longer(cols=3:8) 
+
+CD_HFD_mouse.single.reps <- CD_HFD_mouse %>%  
+  filter(external_gene_name == "Tead1") %>% 
+  dplyr::select(-c(3:13, -26)) %>% 
+  rename(c("mouse_symbol"=2, "mouse_GeneID"=1)) %>% 
+  pivot_longer(cols=3:25) %>% 
+  mutate(Condition = c(rep("CDm", 4), rep("HFDm",4), rep("DIP", 4), rep("DPN",4), rep("E2", 4), rep("PPT", 3))) %>% 
+  group_by(Condition) %>% 
+  mutate(mean_tpm = mean(value)) %>% 
+  mutate(sd=sd(value))
+
+order_names <- unique(CD_HFD_mouse.single.reps$Condition)
+
+# Plot line plots for the expression of the targets in our data
+ggplot(CD_HFD_mouse.single.reps, aes(x=factor(Condition, levels=order_names))) +
+  geom_errorbar(aes(ymin=mean_tpm-sd, ymax=mean_tpm+sd), position= position_dodge(width=0.9), width=0.3) +
+  geom_col(aes(y=mean_tpm, fill=Condition), position = position_dodge(width=0.9), color="black") +
+  geom_point(aes(y=value), shape=21, size=2.5, alpha=0.5, fill="darkgrey", position = position_dodge(width=0.9)) +
+  theme_bw() +
+  theme(axis.text.x =element_text(angle=90, hjust=0.95, vjust=0.5),
+        text = element_text(size=15)) +
+  theme(legend.position="none") +
+  scale_fill_manual(values = alpha(colPals$conditions, 0.9)) +
+  xlab("") +
+  ylab("Tead1 expression (TPM)")
+
+ggsave("../results/Tead1_expression_agonists.pdf", height=10, width=10, units="cm")
+
+
+aov.tead1 <- aov(CD_HFD_mouse.single.reps$value ~ CD_HFD_mouse.single.reps$Condition)
+TukeyHSD(aov.tead1)
+```
+

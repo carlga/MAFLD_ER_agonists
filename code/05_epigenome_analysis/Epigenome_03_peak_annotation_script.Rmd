@@ -147,6 +147,8 @@ ggplot(combined_allSites_anno)+
   theme_classic() +
   scale_fill_manual("All putative", values = c("#235b95", "#73c6b6")) +
   theme(text=element_text(size=15)) +
+    geom_vline(xintercept = log10(11200), color="#235b55") +
+  geom_vline(xintercept = log10(245), color="#235c10") +
   xlab("shortest distance to TSS (log10(bp))") 
 ```
 # Make a stacked bar plot with the distances. 
