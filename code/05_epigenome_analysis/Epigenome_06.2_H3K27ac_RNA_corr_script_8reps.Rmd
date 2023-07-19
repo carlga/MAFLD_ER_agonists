@@ -159,7 +159,7 @@ K27_GE_joined <- inner_join(chrom_TPM2, counts_enha_norm2.1, by="loc_ID")
 
 table(K27_GE_joined$query_ID) 
 
-write.table(K27_GE_joined, "Supplemental_tables/SupplementalTable_initial_ESEGs.txt", quote=F, row.names=F, sep="\t")
+write.table(K27_GE_joined, "Supplementary_tables/SupplementaryTable_initial_ESEGs.txt", quote=F, row.names=F, sep="\t")
 ```
 
 ## Subset the enhancer table and put into long format
@@ -191,7 +191,7 @@ K27_GE_long_group <- K27_GE_long_dd %>% group_by(loc_ID, query_ID) %>%
   mutate(correlation_spearman = cor(Gene_expression, H3K27ac, method="spearman"))
 
 # Export a table for all ESEG with correlations BEFORE filtering anything.
-#write.table(K27_GE_long_group, "Supplemental_tables/SupplementalTable_Initial_ESEG_genes_corr.txt", quote=F, row.names=F, sep="\t")
+#write.table(K27_GE_long_group, "Supplementary_tables/SupplementaryTable_Initial_ESEG_genes_corr.txt", quote=F, row.names=F, sep="\t")
 
 # Filter the ESEGs for a | pearson correlation |  > 0.75
 K27_GE_long_group_plot_pearson <- K27_GE_long_group %>%
@@ -199,7 +199,7 @@ K27_GE_long_group_plot_pearson <- K27_GE_long_group %>%
   group_by(loc_ID, query_ID) %>%
   mutate(name.ident = paste0(symbol, "_", loc_ID))
 nrow(K27_GE_long_group_plot_pearson)/8  # 764 enhancer gene pairs remain.
-#write.table(K27_GE_long_group_plot_pearson, "Supplemental_tables/SupplementalTable_step2_ESEG_genes_corr_0.75pearson.txt", quote=F, row.names=F, sep="\t")
+#write.table(K27_GE_long_group_plot_pearson, "Supplementary_tables/SupplementaryTable_step2_ESEG_genes_corr_0.75pearson.txt", quote=F, row.names=F, sep="\t")
 
 # Also for spearman, but is not used in the end.
 K27_GE_long_group %>%
@@ -216,7 +216,7 @@ K27_GE_long_rev_insect <-  K27_GE_long_group_plot_pearson %>%
 length(unique(K27_GE_long_rev_insect$ensembl_gene_id)) # 67 unique genes remain after filtering for reverted gene set.
 nrow(K27_GE_long_rev_insect)/8 # 131 enhancer gene pairs remain after filtering
 
-#write.table(K27_GE_long_rev_insect, "Supplemental_tables/SupplementalTable_step3_ESEG_genes_corr_0.75pearson_reverted.txt", quote=F, row.names=F, sep="\t")
+#write.table(K27_GE_long_rev_insect, "Supplementary_tables/SupplementaryTable_step3_ESEG_genes_corr_0.75pearson_reverted.txt", quote=F, row.names=F, sep="\t")
 ```
 #Add 50kb to intersect CTCF peaks with the H3K27ac peaks
 ```{r}
@@ -326,7 +326,7 @@ K27_GE_long_group_plot_filt <- K27_GE_long_rev_insect %>%
   group_by(symbol, loc_ID) %>%
   mutate(name.ident = paste0(loc_ID, ":", symbol)) %>%
   filter(name.ident%in%H3K27ac_CTCF_intersect_log2FC_corr$name.ident)
-#write.table(K27_GE_long_group_plot_filt, "Supplemental_tables/SupplementalTable_step4_ESEG_genes_corr_rev_CTCF.txt", row.names = F,  quote = F, sep="\t")
+#write.table(K27_GE_long_group_plot_filt, "Supplementary_tables/SupplementaryTable_step4_ESEG_genes_corr_rev_CTCF.txt", row.names = F,  quote = F, sep="\t")
 
 K27_GE_long_group_plot_filt <- K27_GE_long_group_plot_filt[!duplicated(K27_GE_long_group_plot_filt), ]
 length(unique(K27_GE_long_group_plot_filt$symbol))
@@ -447,7 +447,7 @@ GO_BP <- enrichGO(gene = unique_symbols,
 head(as.data.frame(GO_BP))
 View(as.data.frame(GO_BP))
 
-write.table(as.data.frame(GO_BP), "Supplemental_tables/SupplementalTable_GO_BP_ESEG_genes.txt", row.names = F, sep="\t", quote=F)
+write.table(as.data.frame(GO_BP), "Supplementary_tables/SupplementaryTable_GO_BP_ESEG_genes.txt", row.names = F, sep="\t", quote=F)
 
 library(dplyr)
 library(ggplot2)
