@@ -27,9 +27,9 @@ featureCounts \
         -O \
         -C \
         -a ${SAF_PATH}/promoters_allDB_182.saf  \
-        -o ${OUTPUT_PATH}/diffbind_promoters_182_H3K27ac.readCount \
+        -o ${OUTPUT_PATH}/DAc_promoters_182_H3K27ac.readCount \
         ${BAM_PATH}/*H3K27ac*MkDup.bam \
-        &> ${OUTPUT_PATH}/diffbind_promoters_182_H3K27ac.readCount.log
+        &> ${OUTPUT_PATH}/DAc_promoters_182_H3K27ac.readCount.log
 
 
 #Readme

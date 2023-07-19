@@ -58,7 +58,7 @@ the code was then uploaded to uppmax, features counted, then downloaded, finally
 #### First, for promoters.
 ```{r}
 library(tidyverse)
-counts_prom <- read.delim("results/Epigenome_analysis/diffbind_promoters_182_H3K27ac.clean.readCount", header=T) %>% tibble::column_to_rownames("Geneid")
+counts_prom <- read.delim("results/Epigenome_analysis/DAc_promoters_182_H3K27ac.clean.readCount", header=T) %>% tibble::column_to_rownames("Geneid")
 names(counts_prom) <- c("CDm2","CDm9","HFDm3","HFDm4", "DPN2","DPN3","E2_8","E2_9")
 colsums_prom <- colSums(counts_prom[,])
 
@@ -115,7 +115,7 @@ ggplot(counts_prom_HFD_plot, aes(x=factor(name, levels=order), y=log2(value), fi
   facet_wrap(vars(updown)) + 
   xlab("") +
   ggtitle("Promoters") +
-  ylab("H3K27ac signal\n log2(normalized read count in \nDA promoter peaks in CDvsHFD)") +
+  ylab("H3K27ac signal\n log2(normalized read count in \nDAc promoter peaks in CDvsHFD)") +
   scale_fill_manual(values = c("#88CCEE", "#332288"))
 ```
 
@@ -123,7 +123,7 @@ ggplot(counts_prom_HFD_plot, aes(x=factor(name, levels=order), y=log2(value), fi
 ```{r}
 library(dplyr)
 library(tidyr)
-counts_enha <- read.delim("results/Epigenome_analysis/diffbind_enhancers_1816_H3K27ac.clean.readCount", header=T) %>% tibble::column_to_rownames("Geneid")
+counts_enha <- read.delim("results/Epigenome_analysis/DAc_enhancers_1816_H3K27ac.clean.readCount", header=T) %>% tibble::column_to_rownames("Geneid")
 names(counts_enha) <- c("CDm2","CDm9","HFDm3","HFDm4", "DPN2","DPN3","E2_8","E2_9")
 colsums_enha <- colSums(counts_enha[,])
 
@@ -174,7 +174,7 @@ ggplot(counts_enha_HFD_plot, aes(x=factor(name, levels=order), y=log2(value), fi
   facet_wrap(vars(updown)) + 
   xlab("") +
   ggtitle("Enhancers") +
-  ylab("H3K27ac signal\n log2(normalized read count in \nDA enhancer peaks in CDvsHFD)") +
+  ylab("H3K27ac signal\n log2(normalized read count in \nDAc enhancer peaks in CDvsHFD)") +
   scale_fill_manual(values = c("#88CCEE", "#332288")) 
 ```
 
