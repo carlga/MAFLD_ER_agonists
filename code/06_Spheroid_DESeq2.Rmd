@@ -62,7 +62,7 @@ write.table(meta_table_inhibitors, "results/spheroid_meta_table.txt", sep="\t", 
 source("code/00_helper_functions.R") # @ Carlos have to change the nontibble part
 sorted_table_inhibitors_TPM <- normalizeData(x=sorted_table_inhibitors, method = "TPM", len = count_table.2$Length) 
 
-sorted_table_inhibitors_TPM_mean <- groupTransform_nontibble(x=sorted_table_inhibitors_TPM, 
+sorted_table_inhibitors_TPM_mean <- groupTransform(x=sorted_table_inhibitors_TPM, 
                group.lbls = meta_table_inhibitors$Condition,
                FUN=function(x) apply(x, 1, mean)) %>% 
               tibble::rownames_to_column("ensembl_gene_id")

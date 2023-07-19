@@ -1,0 +1,132 @@
+---
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'Plotting lipid quantification and Seahorse data'
+author: 'Christian Sommerauer & Carlos Gallardo'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-0):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+
+```
+
+```{r}
+getwd()
+library(tidyverse)
+source("code/00_helper_functions.R")
+```
+
+# AML12 lipid droplet quantification, Figure 5C
+```{r}
+aml12_t1 <- read.delim("data/LD_quant_aml12_trial1.txt")
+aml12_t1_grp <- aml12_t1 %>% group_by(condition)  %>% dplyr::select(2:7) %>% mutate(Trial = "Trial1")
+
+aml12_t2 <- read.delim("data/LD_quant_aml12_trial2.txt")
+aml12_t2_grp <- aml12_t2 %>% group_by(condition) %>% dplyr::select(2:7)%>% mutate(Trial = "Trial2") 
+
+combined_t1_t2 <- rbind(aml12_t2_grp, aml12_t1_grp)
+
+# Determine median of siNT for all four parameters
+combined_t1_t2_medianNorm <- combined_t1_t2 %>% ungroup() %>% group_by(Trial, condition) %>% 
+  mutate(LD_per_cell_median = median(LD_per_cell)) %>% 
+  dplyr::select(condition, Trial, LD_per_cell_median) %>% 
+  filter(condition=="siNT") %>% 
+  unique()
+
+# Split per trial
+combined_t1_t2_medianNorm_trial1 <- combined_t1_t2_medianNorm %>% filter(Trial=="Trial1")
+combined_t1_t2_medianNorm_trial2 <- combined_t1_t2_medianNorm %>% filter(Trial=="Trial2")
+
+# Normalize the values, per trial
+aml12_t1_grp.norm <- aml12_t1_grp %>% 
+  mutate(LD_per_cell_norm = LD_per_cell/combined_t1_t2_medianNorm_trial1$LD_per_cell_median)
+  
+aml12_t2_grp.norm <- aml12_t2_grp %>% 
+  mutate(LD_per_cell_norm = LD_per_cell/combined_t1_t2_medianNorm_trial2$LD_per_cell_median)
+
+combined_t1_t2_norm <- rbind(aml12_t2_grp.norm, aml12_t1_grp.norm)
+
+ggplot(combined_t1_t2_norm, aes(condition, LD_per_cell_norm)) +
+ coord_cartesian() +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(shape=21, size=3, width=0.05, fill="darkgrey") +
+  #geom_jitter(shape=21, size=3, width=0.05, aes(fill=factor(Trial))) +
+  theme_bw() +
+  scale_y_continuous(limits=c(0,3)) +
+  ylab("Lipid droplets per cell rel. to siNT") +
+  xlab("")
+
+
+# Perform normality tests on the data distribution. First, separate the two conditions
+combined_t1_t2_norm_siNT <- combined_t1_t2_norm %>% filter(condition=="siNT")
+combined_t1_t2_norm_siTead1 <- combined_t1_t2_norm %>% filter(condition=="siTead1")
+
+shapiro.test(combined_t1_t2_norm_siNT$LD_per_cell_norm) # 0.4 --> normal
+shapiro.test(combined_t1_t2_norm_siTead1$LD_per_cell_norm) # 0.001 --> not normal 
+
+# perform both wilcoxon and t-test, since one condition is normally distributed and one is not.
+
+wilcox.test(combined_t1_t2_norm$LD_per_cell_norm ~ combined_t1_t2_norm$condition) # p = 0.000258
+t.test(combined_t1_t2_norm$LD_per_cell_norm ~ combined_t1_t2_norm$condition) # p = 0.000399
+```
+
+
+# Seahorse, Figure 5D
+```{r}
+
+data <- read.delim("data/siTEAD1_Seahorse")
+
+library(dplyr)
+library(ggplot2)
+data.grouped <- data %>% mutate(OCR_umol_per_l = Value/1000) %>% group_by(Condition, SeahorseStage) %>%  mutate(mean=mean(OCR_umol_per_l))
+
+order = c("Basal", "Oligomycin", "FCCP")
+ggplot(data.grouped, aes(x=factor(SeahorseStage, levels=order), y=mean, fill=Condition)) + 
+  geom_col(position=position_dodge(width=0.9), color="black") +
+  geom_point(position=position_dodge(width=0.9), shape=21,color="black",  aes(y=OCR_umol_per_l)) +
+  theme(axis.text=element_text(size=18)) +
+  theme_bw() +
+  ylab("OCR (µmol/min)") +
+  xlab("") +
+  scale_fill_manual(values=c("#666666", "lightgrey"))
+
+data.grouped.basal <- data.grouped %>% filter(SeahorseStage == "Basal")
+data.grouped.oligo <- data.grouped %>% filter(SeahorseStage == "Oligomycin")
+data.grouped.FCCP <- data.grouped %>% filter(SeahorseStage == "FCCP")
+t.test( data.grouped.basal$Value ~ data.grouped.basal$Condition)
+t.test( data.grouped.oligo$Value ~ data.grouped.oligo$Condition)
+t.test( data.grouped.FCCP$Value ~ data.grouped.FCCP$Condition) 
+
+```
+# PHH spheroid lipid quantification, Figure 5E
+```{r}
+inhibitors_adipored <- read.csv("data/TEAD_inhibitors_adipored.csv")
+
+order <- c("FFA_control", "TEADsf", "TEADap")
+ggplot(inhibitors_adipored, aes(x=factor(inhibitor, levels=order), y=norm_to_ctrl)) +
+  geom_boxplot() +
+  geom_point(aes(x=inhibitor, y=norm_to_ctrl), size=3, fill="darkgrey", shape=21) +
+  theme_bw() +
+  theme(text = element_text(size=18)) +
+  ylab("Fluoresence rel. to control") +
+  xlab("") +
+    scale_y_continuous(limits=c(0,2), breaks=c(0,0.5,1, 1.5)) +
+  geom_hline(yintercept = 1, linetype="dotted")
+
+
+# Statistics
+inhibitors_TEADap <- inhibitors_adipored %>% filter(!inhibitor=="TEADsf")
+inhibitors_TEADsf <- inhibitors_adipored %>% filter(!inhibitor=="TEADap")
+
+t.test(inhibitors_TEADap$value ~ inhibitors_TEADap$inhibitor)
+t.test(inhibitors_TEADsf$value ~ inhibitors_TEADsf$inhibitor)
+```
+
