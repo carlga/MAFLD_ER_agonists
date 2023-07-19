@@ -231,7 +231,7 @@ order_element <- c("prom_DB", "prom_all", "prom_all_sub", "enha_DB", "enha_all",
 # Plotting the stacked bar plots
 ggplot(summary_distance_long) +
   geom_col(aes(y=value, x=factor(name, levels=order_element), fill=factor(rowname, levels=order_dist))) +
-  scale_fill_manual("Distance\nfrom TSS (bp)", values=c("#e8daef","#ce93d8", "#9c27b0","#633974")) +
+  scale_fill_manual("Distance\nfrom TSS (bp)", values=c("#D9D9D9","#B3B3B3", "#666666","#000000")) +
   ylab("Percentage of elements") +
   xlab("") + 
   theme(text=element_text(size=15)) +
