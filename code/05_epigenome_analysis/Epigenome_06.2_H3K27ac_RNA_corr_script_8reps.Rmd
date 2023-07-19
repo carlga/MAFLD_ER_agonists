@@ -159,7 +159,7 @@ K27_GE_joined <- inner_join(chrom_TPM2, counts_enha_norm2.1, by="loc_ID")
 
 table(K27_GE_joined$query_ID) 
 
-write.table(K27_GE_joined, "Supplemental_tables/SupplementalTable_initial_EREGs.txt", quote=F, row.names=F, sep="\t")
+write.table(K27_GE_joined, "Supplemental_tables/SupplementalTable_initial_ESEGs.txt", quote=F, row.names=F, sep="\t")
 ```
 
 ## Subset the enhancer table and put into long format
@@ -190,16 +190,16 @@ K27_GE_long_group <- K27_GE_long_dd %>% group_by(loc_ID, query_ID) %>%
   mutate(correlation_pearson = cor(Gene_expression, H3K27ac, method="pearson")) %>%
   mutate(correlation_spearman = cor(Gene_expression, H3K27ac, method="spearman"))
 
-# Export a table for all EREG with correlations BEFORE filtering anything.
-#write.table(K27_GE_long_group, "Supplemental_tables/SupplementalTable_Initial_EREG_genes_corr.txt", quote=F, row.names=F, sep="\t")
+# Export a table for all ESEG with correlations BEFORE filtering anything.
+#write.table(K27_GE_long_group, "Supplemental_tables/SupplementalTable_Initial_ESEG_genes_corr.txt", quote=F, row.names=F, sep="\t")
 
-# Filter the EREGs for a | pearson correlation |  > 0.75
+# Filter the ESEGs for a | pearson correlation |  > 0.75
 K27_GE_long_group_plot_pearson <- K27_GE_long_group %>%
   filter(abs(correlation_pearson) > 0.75) %>%
   group_by(loc_ID, query_ID) %>%
   mutate(name.ident = paste0(symbol, "_", loc_ID))
 nrow(K27_GE_long_group_plot_pearson)/8  # 764 enhancer gene pairs remain.
-#write.table(K27_GE_long_group_plot_pearson, "Supplemental_tables/SupplementalTable_step2_EREG_genes_corr_0.75pearson.txt", quote=F, row.names=F, sep="\t")
+#write.table(K27_GE_long_group_plot_pearson, "Supplemental_tables/SupplementalTable_step2_ESEG_genes_corr_0.75pearson.txt", quote=F, row.names=F, sep="\t")
 
 # Also for spearman, but is not used in the end.
 K27_GE_long_group %>%
@@ -214,8 +214,9 @@ length(revALL)
 K27_GE_long_rev_insect <-  K27_GE_long_group_plot_pearson %>%
   filter(ensembl_gene_id %in% revALL)
 length(unique(K27_GE_long_rev_insect$ensembl_gene_id)) # 67 unique genes remain after filtering for reverted gene set.
+nrow(K27_GE_long_rev_insect)/8 # 131 enhancer gene pairs remain after filtering
 
-#write.table(K27_GE_long_rev_insect, "Supplemental_tables/SupplementalTable_step3_EREG_genes_corr_0.75pearson_reverted.txt", quote=F, row.names=F, sep="\t")
+#write.table(K27_GE_long_rev_insect, "Supplemental_tables/SupplementalTable_step3_ESEG_genes_corr_0.75pearson_reverted.txt", quote=F, row.names=F, sep="\t")
 ```
 #Add 50kb to intersect CTCF peaks with the H3K27ac peaks
 ```{r}
@@ -240,8 +241,8 @@ K27_GE_long_group_coordinates_right_export <- K27_GE_long_group_coordinates_righ
   dplyr::select("chrom", "new_start", "new_end", "loc_ID", "query_ID", "symbol") %>%
   unique()
 
-write.table(K27_GE_long_group_coordinates_left_export, "results/Epigenome_analysis/H3K27ac_left_non_intersect.bed", quote=F, row.names = F, sep="\t")
-write.table(K27_GE_long_group_coordinates_right_export, "results/Epigenome_analysis/H3K27ac_right_non_intersect.bed", quote=F, row.names=F, sep="\t")
+#write.table(K27_GE_long_group_coordinates_left_export, "results/Epigenome_analysis/H3K27ac_left_non_intersect.bed", quote=F, row.names = F, sep="\t")
+#write.table(K27_GE_long_group_coordinates_right_export, "results/Epigenome_analysis/H3K27ac_right_non_intersect.bed", quote=F, row.names=F, sep="\t")
 
 #From here, intersect the CTCF peaks with the exported H3K27ac regions using BEDtools (command line)
 ```
@@ -298,7 +299,7 @@ length(unique_symbols)
 ```{r}
 CDvsHFD_H3K27ac_Diffbind <- readRDS("results/Epigenome_analysis/Diffbind_results_FDR_fold.rds")$all_DB_peaks$K27_CDvsHFD %>%
  mutate(loc_ID = paste0(seqnames, ".",start,".",end), .before = seqnames) %>%
-  dplyr::select(loc_ID, Fold, FDR) # Produce locIDs to match the EREG IDs
+  dplyr::select(loc_ID, Fold, FDR) # Produce locIDs to match the ESEG IDs
 
 # These are the enhancers intersected with CTCF. But more informative with foldchanges from Diffbind. The correlations are not added here.
 H3K27ac_CTCF_intersect_log2FC <- inner_join(H3K27ac_CTCF_intersect,CDvsHFD_H3K27ac_Diffbind, by="loc_ID") 
@@ -325,7 +326,7 @@ K27_GE_long_group_plot_filt <- K27_GE_long_rev_insect %>%
   group_by(symbol, loc_ID) %>%
   mutate(name.ident = paste0(loc_ID, ":", symbol)) %>%
   filter(name.ident%in%H3K27ac_CTCF_intersect_log2FC_corr$name.ident)
-write.table(K27_GE_long_group_plot_filt, "Supplemental_tables/SupplementalTable_step4_EREG_genes_corr_rev_CTCF.txt", row.names = F,  quote = F, sep="\t")
+#write.table(K27_GE_long_group_plot_filt, "Supplemental_tables/SupplementalTable_step4_ESEG_genes_corr_rev_CTCF.txt", row.names = F,  quote = F, sep="\t")
 
 K27_GE_long_group_plot_filt <- K27_GE_long_group_plot_filt[!duplicated(K27_GE_long_group_plot_filt), ]
 length(unique(K27_GE_long_group_plot_filt$symbol))
@@ -336,9 +337,9 @@ length(unique(K27_GE_long_group_plot_filt$symbol)) # 45 unique genes
 nrow(K27_GE_long_group_plot_filt)/8 # 68 enhancer - gene pairs
 length(unique(K27_GE_long_group_plot_filt$loc_ID)) # 67 unique enhancers
 
-# 68 total combinations of location IDs and genes, one enhancer goes for to genes.
+# 68 total combinations of location IDs and genes, one enhancer goes for two genes.
 
-write.table(K27_GE_long_group_plot_filt, "results/Epigenome_analysis/corr_45genes_67enh_toPlot.txt", row.names = F,  quote = F, sep="\t")
+#write.table(K27_GE_long_group_plot_filt, "results/Epigenome_analysis/corr_45genes_67enh_toPlot.txt", row.names = F,  quote = F, sep="\t")
 ```
 
 ```{r}
@@ -349,7 +350,7 @@ library(ggpubr)
             # xscale = "log2",
             xlab="H3K27ac",
             ylab="TPM",
-            palette=c("#7f9ad7","#7f9ad7", "#7dc7d1", "#7dc7d1", "#356fb5","#356fb5","#2c2f72","#2c2f72")) +
+            palette=c("#88CCEE","#88CCEE", "#DDCC77", "#DDCC77", "#AA4499","#AA4499","#332288","#332288")) +
     stat_cor(aes(label = ..r.label..),method="pearson", p.digits=0, size=5) +
     theme_bw() + 
     theme(axis.text = element_text(size=14),
@@ -364,7 +365,7 @@ ggscatter(Acot_filt, x = "H3K27ac", y="Gene_expression", add = "reg.line",
             # xscale = "log2",
             xlab="H3K27ac",
             ylab="TPM",
-            palette=c("#7f9ad7","#7f9ad7", "#7dc7d1", "#7dc7d1", "#356fb5","#356fb5","#2c2f72","#2c2f72")) +
+            palette=c("#88CCEE","#88CCEE", "#DDCC77", "#DDCC77", "#AA4499","#AA4499","#332288","#332288")) +
     stat_cor(aes(label = ..r.label..),method="pearson", p.digits=0, size=5) +
     theme_bw() + 
     theme(axis.text = element_text(size=14),
@@ -383,25 +384,7 @@ ggscatter(tead1, x = "H3K27ac", y="Gene_expression", add = "reg.line",
             # xscale = "log2",
             xlab="H3K27ac",
             ylab="TPM",
-            palette=c("#7f9ad7","#7f9ad7", "#7dc7d1", "#7dc7d1", "#356fb5","#356fb5","#2c2f72","#2c2f72")) +
-    stat_cor(aes(label = ..r.label..),method="pearson", p.digits=0, size=5) +
-    theme_bw() + 
-    theme(axis.text = element_text(size=14),
-          strip.background = element_rect(colour="black",
-                                        fill="white")) +
-    facet_wrap(vars(symbol, loc_ID), scales="free", ncol=4) 
-
-# One enhancer has a correlation of 0.67 and hence does not pass the filter. I think this enhancer is interesting to show, which is why I remove the two enhancers with really poor correlation in the next line, keeping three of five enhancers that we show.
-Sulf2_also_non_filter_pass <- K27_GE_long_group %>% dplyr::filter(symbol=="Sulf2") %>% filter(!loc_ID=="chr2.166125461.166125861")  %>% filter(!loc_ID=="chr2.166676963.166677363")
-Sulf2_all_enhancers <- K27_GE_long_group %>% dplyr::filter(symbol=="Sulf2")
-#Sulf2 <- K27_GE_long_group_plot_filt %>% dplyr::filter(symbol=="Sulf2")  # Plot this to only show E-G-pairs > 0.75
-ggscatter(Sulf2_also_non_filter_pass, x = "H3K27ac", y="Gene_expression", add = "reg.line",
-            shape=21,size=5, fill="name",alpha=0.8,
-            # yscale = "log2",
-            # xscale = "log2",
-            xlab="H3K27ac",
-            ylab="TPM",
-            palette=c("#7f9ad7","#7f9ad7", "#7dc7d1", "#7dc7d1", "#356fb5","#356fb5","#2c2f72","#2c2f72")) +
+            palette=c("#88CCEE","#88CCEE", "#DDCC77", "#DDCC77", "#AA4499","#AA4499","#332288","#332288")) +
     stat_cor(aes(label = ..r.label..),method="pearson", p.digits=0, size=5) +
     theme_bw() + 
     theme(axis.text = element_text(size=14),
