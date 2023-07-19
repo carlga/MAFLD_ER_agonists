@@ -114,9 +114,9 @@ ggplot(counts_prom_HFD_plot, aes(x=factor(name, levels=order), y=log2(value), fi
   theme_classic() +
   facet_wrap(vars(updown)) + 
   xlab("") +
-  ggtitle("PROMOTERS") +
+  ggtitle("Promoters") +
   ylab("H3K27ac signal\n log2(normalized read count in \nDA promoter peaks in CDvsHFD)") +
-  scale_fill_manual(values = c("#7f9ad7", "#2c2f72"))
+  scale_fill_manual(values = c("#88CCEE", "#332288"))
 ```
 
 #### Then, for enhancers
@@ -173,9 +173,9 @@ ggplot(counts_enha_HFD_plot, aes(x=factor(name, levels=order), y=log2(value), fi
   theme_classic() +
   facet_wrap(vars(updown)) + 
   xlab("") +
-  ggtitle("ENHANCERS") +
+  ggtitle("Enhancers") +
   ylab("H3K27ac signal\n log2(normalized read count in \nDA enhancer peaks in CDvsHFD)") +
-  scale_fill_manual(values = c("#7f9ad7", "#2c2f72")) 
+  scale_fill_manual(values = c("#88CCEE", "#332288")) 
 ```
 
 ```{r}
