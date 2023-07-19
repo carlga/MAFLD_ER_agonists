@@ -1,248 +1,65 @@
-"# Load packages
+
+---
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'Spheroid RNA-seq - Differential expression analysis'
+author: 'Christian Sommerauer & Carlos Gallardo'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-0):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+
+```
+
+# Load packages
 ```{r}
 library(clusterProfiler)
-library(VennDiagram)
 library(tidyverse)
 library(org.Hs.eg.db)
 library(fgsea)
-
 sessionInfo()
 ```
 
 # Load RDS files
 ```{r}
-inhibitor_RDS <- readRDS("230525_inhibitors_DEGlists.rds")
-siRNA_RDS <- readRDS("230525_siRNAs_DEGlists.rds")
+inhibitor_RDS <- readRDS("results/Spheroid_inhibitors_DEGlists.rds")
 
-universe <- siRNA_RDS$unfilt$siTEAD1_vs_siNT %>% pull("external_gene_name")
+universe <- inhibitor_RDS$unfilt$TEADap_vs_control %>% pull("external_gene_name")
 
-siTEAD1vssiNT <- siRNA_RDS$filt$siTEAD1_vs_siNT
-siSLC16A5_vs_siNT <- siRNA_RDS$filt$siSLC16A5_vs_siNT
-TEAD1_inhvsCTRL <- inhibitor_RDS$filt$TEAD1_vs_control
-panTEAD_inhvsCTRL <- inhibitor_RDS$filt$panTEAD_vs_control
-
-write.table(siTEAD1vssiNT, "230525_exported_DESeq2_tables/230603_TEAD1_inh_vs_siNT.txt", sep="\t", quote = F, row.names = F)
+TEADap_inh_vs_control <- inhibitor_RDS$filt$TEADap_vs_control
+TEADsf_inh_vs_control <- inhibitor_RDS$filt$TEADsf_vs_control
 ```
 
 ```{r}
-TEAD1_panTEAD_overlap <- intersect(panTEAD_inhvsCTRL$external_gene_name, TEAD1_inhvsCTRL$external_gene_name)
-
-library(ggvenn)
-# Create Data
-venn <- list(B = sort(panTEAD_inhvsCTRL$ensembl_gene_id),
-                  A = TEAD1_inhvsCTRL$ensembl_gene_id)
-  
-# Create venn diagram Pairwise
-ggvenn(venn, c("A", "B"),
-       auto_scale=TRUE,
-       fill_color = c("#6ca9c1", "#c16c88"))
-
-ggsave("230608_ggvenn_TEAD1i_panTEADi_overlap.pdf")
+TEADap_inh_vs_control_entrez <- bitr(TEADap_inh_vs_control$ensembl_gene_id, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = "org.Hs.eg.db")
+TEADsf_inh_vs_control_entrez <- bitr(TEADsf_inh_vs_control$ensembl_gene_id, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = "org.Hs.eg.db")
 
 
-TEAD1_siTEAD_overlap <- intersect(siTEAD1vssiNT$external_gene_name, TEAD1_inhvsCTRL$external_gene_name)
-
-# Look at reverted genes
-ERreg38genes <- read.delim("/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/results/ER_regulated_genes.txt", header=F)
-bulkRNAseq_mmus_DEG_sets <- readRDS("/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/results/bulkRNAseq_mmus_DEG_sets.rds")
-bulkRNAseq_mmus_DEG_sets <- data.frame(GeneSymbol_mouse = bulkRNAseq_mmus_DEG_sets$gene_symbols$reverted)
-orthologs <- read.delim("/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/data/ensembl_mmus_hsap_dec2021_orthologs.tsv")
-
-# No significant overlap I would say, but statistics needs to be performed.
-reverted_Hsap <- inner_join(bulkRNAseq_mmus_DEG_sets, orthologs, by="GeneSymbol_mouse")
-TEAD1inh_x_reverted <- intersect(TEAD1_inhvsCTRL$external_gene_name, reverted_Hsap$GeneSymbol_human)
-length(TEAD1inh_x_reverted)
-siTEAD1_x_reverted <- intersect(siTEAD1vssiNT$external_gene_name, reverted_Hsap$GeneSymbol_human)
-length(siTEAD1_x_reverted)
-panTEADinh_x_reverted <- intersect(panTEAD_inhvsCTRL$external_gene_name, reverted_Hsap$GeneSymbol_human)
-length(panTEADinh_x_reverted)
-siSLC16A5_x_reverted <- intersect(siSLC16A5_vs_siNT$external_gene_name, reverted_Hsap$GeneSymbol_human)
-length(siSLC16A5_x_reverted)
-```
-
-```{r}
-
-GO_BP_siTEAD1 <- enrichGO(gene = siTEAD1vssiNT$external_gene_name,
-          OrgDb = "org.Hs.eg.db",
-          keyType = "SYMBOL",
-          ont= "BP",
-          qvalueCutoff = 0.05,
-          readable = TRUE,
-          universe = universe)
-
-GO_BP_siSLC16A5 <- enrichGO(gene = siSLC16A5_vs_siNT$external_gene_name,
-          OrgDb = "org.Hs.eg.db",
-          keyType = "SYMBOL",
-          ont= "BP",
-          qvalueCutoff = 0.05,
-          readable = TRUE,
-          universe = universe)
-View(GO_BP_siSLC16A5@result)
-
-GO_BP_TEAD1_inh <- enrichGO(gene = TEAD1_inhvsCTRL$external_gene_name,
-          OrgDb = "org.Hs.eg.db",
-          keyType = "SYMBOL",
-          ont= "BP",
-          qvalueCutoff = 0.05,
-          readable = TRUE,
-          universe = universe)
-View(GO_BP_TEAD1_inh@result)
-
-GO_BP_panTEAD_inh <- enrichGO(gene = panTEAD_inhvsCTRL$external_gene_name,
-          OrgDb = "org.Hs.eg.db",
-          keyType = "SYMBOL",
-          ont= "BP",
-          qvalueCutoff = 0.05,
-          readable = TRUE,
-          universe = universe)
-```
-
-```{r}
-# Plotting the KEGG pathways
-list_GO.BP <- list(GO_BP_siTEAD1=GO_BP_siTEAD1@result,
-                  GO_BP_siSLC16A5=GO_BP_siSLC16A5@result,
-                  GO_BP_TEAD1_inh=GO_BP_TEAD1_inh@result,
-                  GO_BP_panTEAD_inh=GO_BP_panTEAD_inh@result)
-
-combined_genesets.GO <- list()
-
-for (i in names(list_GO.BP)) {
-  
-combined_genesets.GO[[i]] <- list_GO.BP[[i]] %>%
-               dplyr::arrange(p.adjust) %>%
-               dplyr::slice(1:12)
-
-names(combined_genesets.GO[[i]])
-order <- list()
-order[[i]] <- combined_genesets.GO[[i]] %>% dplyr::pull(Description)
-# Plot and order by p.adjust
-ggplot_bar <- ggplot(combined_genesets.GO[[i]], aes(x=factor(Description, levels=order[[i]]), y=-log10(p.adjust), fill=Count)) +
-  geom_col(color="black") +
-  coord_flip() +
-  scale_x_discrete(limits=rev) +
-  #scale_y_continuous("-log10") +
-  scale_fill_gradient(high = "#943434", low="#e4ea23") +
-  theme_classic() +
-  theme(text=element_text(size=20)) +
-  geom_hline(yintercept = -log10(0.05), color="red", linewidth=2) +
-  xlab("") +
-  ggtitle(i)
-
-date <- gsub("-", "", Sys.Date())
-
-print(ggplot_bar)
-
-ggsave(filename = paste0("GO_BP_barplots/", date,"_GO.BP_RNAseq_top10_", i, ".pdf"), width=10, height=7)
-       
-} 
-
-```
-
-# Plot heatmaps of interesting downstream genes of the GO pathways
-```{r}
-# TPM - normalized tables
-nonNorm_Counts <- readRDS("230531_exported_TPM_spheroids.rds")
-
-library(ComplexHeatmap)
-library(matrixStats)
-library(MatrixGenerics)
-
-# Make a function that directly plots the genes inside GO.BP pathways as heatmap
-gimme_heatmap_from_GO_BP <- function(path, GO_input, GO_name, pathway, TPM_counts, dimension=7) {
-
-TPM_counts[,2:(ncol(TPM_counts)-2)] <- lapply(TPM_counts[,2:(ncol(TPM_counts)-2)], function(x) x+1)
-
-TPM_filtered <- GO_input %>% 
-  filter(Description==pathway) 
-
-genes <- unlist(strsplit(TPM_filtered$geneID, "/"))
-
-
-nonNorm_Counts_filt <- TPM_counts %>% filter(external_gene_name %in% genes) %>% 
-  dplyr::select(-description, -ensembl_gene_id) %>% tibble::column_to_rownames("external_gene_name")
- counts.ncol <- ncol(nonNorm_Counts_filt)
- 
- nonNorm_Counts_filt <- nonNorm_Counts_filt %>%
-  mutate(mean_by_GENE = rowMeans(.)) %>%
-  mutate(sd_by_GENE = apply(.[1:counts.ncol], 1, sd)) %>% 
-  mutate(across(1:counts.ncol, ~.x-mean_by_GENE)) %>%
-  mutate(across(1:counts.ncol, ~.x/sd_by_GENE)) %>% 
-  dplyr::select(-(counts.ncol+1), -(counts.ncol+2)) %>% 
-  as.matrix() 
-
-date <- gsub("-", "", Sys.Date())
-
-pdf(paste0(path, date, "_GO_BP_", pathway, "_", GO_name, ".pdf"))
-nonNorm_Counts_filt_hm <- ComplexHeatmap::Heatmap(matrix=nonNorm_Counts_filt, width = unit(dimension, "cm"),name = pathway)
-print(nonNorm_Counts_filt_hm)
-
-dev.off()
-}
-
-# Run the function
-interesting_TEAD1inh_GO_BP <- GO_BP_TEAD1_inh$Description[1:12]
-
-interesting_TEAD1inh_GO_BP_LIPID <- GO_BP_TEAD1_inh@result %>% 
-  filter(qvalue < 0.05) %>% 
-  filter(grepl("lipid|fatty", Description, ignore.case = TRUE)) %>% 
-  dplyr::pull("Description")
-
-
-for (i in 1:length(interesting_TEAD1inh_GO_BP)) {
-gimme_heatmap_from_GO_BP(path="GO_BP_heatmaps/TEAD1inh/Top12/",
-                        GO_input = list_GO.BP$GO_BP_TEAD1_inh, 
-                        GO_name = "TEAD1inh",
-                        pathway = interesting_TEAD1inh_GO_BP[i], 
-                        TPM_counts=nonNorm_Counts$sorted_table_inhibitors_TPM)
-}
-
-
-for (i in 1:length(interesting_TEAD1inh_GO_BP_LIPID)) {
-gimme_heatmap_from_GO_BP(path="GO_BP_heatmaps/TEAD1inh/Top12/",
-                        GO_input = list_GO.BP$GO_BP_TEAD1_inh, 
-                        GO_name = "TEAD1inh",
-                        pathway = interesting_TEAD1inh_GO_BP_LIPID[i], 
-                        TPM_counts=nonNorm_Counts$sorted_table_inhibitors_TPM)
-}
-
-```
-
-
-```{r}
-siTEAD1vssiNT_entrez <- bitr(siTEAD1vssiNT$ensembl_gene_id, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = "org.Hs.eg.db")
-siSLC16A5_vs_siNT_entrez <- bitr(siSLC16A5_vs_siNT$ensembl_gene_id, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = "org.Hs.eg.db")
-panTEAD_inhvsCTRL_entrez <- bitr(panTEAD_inhvsCTRL$ensembl_gene_id, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = "org.Hs.eg.db")
-TEAD1_inhvsCTRL_entrez <- bitr(TEAD1_inhvsCTRL$ensembl_gene_id, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = "org.Hs.eg.db")
-
-KEGG_siTEAD1 <- enrichKEGG(gene = siTEAD1vssiNT_entrez$ENTREZID,
-          keyType = "kegg",
-          pAdjustMethod = "BH",
-          qvalueCutoff = 0.05)
-KEGG_siTEAD1 <- as.data.frame(KEGG_siTEAD1@result)
-
-KEGG_siSLC16A5 <- enrichKEGG(gene = siSLC16A5_vs_siNT_entrez$ENTREZID,
+KEGG_TEADap_inh <- enrichKEGG(gene = TEADap_inh_vs_control_entrez$ENTREZID,
           organism = "hsa",
           keyType = "kegg",
           pAdjustMethod = "BH",
           qvalueCutoff = 0.05)
-KEGG_siSLC16A5 <- as.data.frame(KEGG_siSLC16A5@result)
+KEGG_TEADap_inh <- as.data.frame(KEGG_TEADap_inh@result)
+#write.table(KEGG_TEADap_inh, "data/KEGG_TEADap_vs_control_FigS8A.txt", sep="\t", quote=F, row.names = F)
 
-KEGG_TEAD1_inh <- enrichKEGG(gene = TEAD1_inhvsCTRL_entrez$ENTREZID,
+KEGG_TEADsf_inh <- enrichKEGG(gene = TEADsf_inh_vs_control_entrez$ENTREZID,
           organism = "hsa",
           keyType = "kegg",
           pAdjustMethod = "BH",
           qvalueCutoff = 0.05)
-KEGG_TEAD1_inh <- as.data.frame(KEGG_TEAD1_inh@result)
-
-KEGG_panTEAD_inh <- enrichKEGG(gene = panTEAD_inhvsCTRL_entrez$ENTREZID,
-          organism = "hsa",
-          keyType = "kegg",
-          pAdjustMethod = "BH",
-          qvalueCutoff = 0.05)
-KEGG_panTEAD_inh <- as.data.frame(KEGG_panTEAD_inh@result)
+KEGG_TEADsf_inh <- as.data.frame(KEGG_TEADsf_inh@result)
 
 
-
+#This function tells you the gene symbols in each KEGG pathway (changed by TEADap)
 gimme_SYMBOL_from_KEGG <- function(table, pathway) {
  table_subset <- table %>%  filter(Description==pathway) %>% pull("geneID")
  split_entrez <- unlist(strsplit(as.character(table_subset), "/"))
@@ -252,25 +69,27 @@ gimme_SYMBOL_from_KEGG <- function(table, pathway) {
  
 }
 
-gimme_SYMBOL_from_KEGG(table=KEGG_TEAD1_inh, pathway = "AMPK signaling pathway")
-gimme_SYMBOL_from_KEGG(table=KEGG_TEAD1_inh, pathway = "Endocrine resistance")
-gimme_SYMBOL_from_KEGG(table=KEGG_TEAD1_inh, pathway = "PI3K-Akt signaling pathway")
 
+#This function tells you the gene symbols in each KEGG pathway (changed by TEADap)
+gimme_SYMBOL_from_KEGG(table=KEGG_TEADap_inh, pathway = "AMPK signaling pathway")
+gimme_SYMBOL_from_KEGG(table=KEGG_TEADap_inh, pathway = "PI3K-Akt signaling pathway")
+
+# This code exports the genes inside the top12 KEGG pathways of TEADap vs control with the corresponding human-readable symbols.
 KEGG_top12_pathway_geneList <- list()
-for (i in KEGG_TEAD1_inh$Description[1:12]) {
-  KEGG_top12_pathway_geneList[[i]] <- gimme_SYMBOL_from_KEGG(table=KEGG_TEAD1_inh, pathway=i)
+for (i in KEGG_TEADap_inh$Description[1:12]) {
+  KEGG_top12_pathway_geneList[[i]] <- gimme_SYMBOL_from_KEGG(table=KEGG_TEADap_inh, pathway=i)
 }
 
-saveRDS(KEGG_top12_pathway_geneList, "230615_top12KEGGpathways_gene_content.rds")
+#saveRDS(KEGG_top12_pathway_geneList, "data/top12KEGGpathways_gene_content.rds")
 ```
-
-
-```{r}
 # Plotting the KEGG pathways
-list_KEGG <- list(KEGG_siTEAD1=KEGG_siTEAD1,
-                  KEGG_siSLC16A5=KEGG_siSLC16A5,
-                  KEGG_TEAD1_inh=KEGG_TEAD1_inh,
-                  KEGG_panTEAD_inh=KEGG_panTEAD_inh)
+```{r}
+# Import the KEGG table (run in June 2023, KEGG version from April)
+KEGG_TEADap_inh <- read.delim("data/KEGG_TEADap_vs_control_FigS8A.txt")
+
+# Note: This following section is looped, so one can technically plot many results at once.
+list_KEGG <- list(KEGG_TEADap_inh=KEGG_TEADap_inh,
+                  KEGG_TEADsf_inh=KEGG_TEADsf_inh)
 
 combined_genesets <- list()
 
@@ -300,136 +119,10 @@ date <- gsub("-", "", Sys.Date())
 
 print(ggplot_bar)
 
-ggsave(filename = paste0("KEGG_pathways_barplots/", date,"_KEGG_RNAseq_top12_", i, ".pdf"), width=10, height=7)
+#ggsave(filename = paste0("results/","SupplFig8A_KEGG_RNAseq_top12_", i, ".pdf"), width=10, height=7)
        
 } 
 
-```
-
-# Plot heatmaps of interesting downstream genes of the KEGG pathways
-```{r}
-# TPM - normalized tables
-nonNorm_Counts <- readRDS("230531_exported_TPM_spheroids.rds")
-
-library(ComplexHeatmap)
-library(matrixStats)
-library(MatrixGenerics)
-
-# Make a function that directly plots the genes inside KEGG pathways as heatmap
-gimme_heatmap_from_kegg <- function(path, KEGG_input, KEGG_name, kegg_pathway, TPM_counts, dimension=5) {
-pathway <- gimme_SYMBOL_from_KEGG(table=KEGG_input, pathway = kegg_pathway)
-
-
-TPM_counts[,2:(ncol(TPM_counts)-2)] <- lapply(TPM_counts[,2:(ncol(TPM_counts)-2)], function(x) x+1)
-
-nonNorm_Counts_filt <- TPM_counts %>% filter(external_gene_name %in% pathway$SYMBOL) %>% 
-  dplyr::select(-description, -ensembl_gene_id) %>% tibble::column_to_rownames("external_gene_name")
- counts.ncol <- ncol(nonNorm_Counts_filt)
- 
- nonNorm_Counts_filt <- nonNorm_Counts_filt %>%
-  mutate(mean_by_GENE = rowMeans(.)) %>%
-  mutate(sd_by_GENE = apply(.[1:counts.ncol], 1, sd)) %>% 
-  mutate(across(1:counts.ncol, ~.x-mean_by_GENE)) %>%
-  mutate(across(1:counts.ncol, ~.x/sd_by_GENE)) %>% 
-  dplyr::select(-(counts.ncol+1), -(counts.ncol+2)) %>% 
-  as.matrix() 
-
-date <- gsub("-", "", Sys.Date())
-
-pdf(paste0(path, date, "_KEGG_", kegg_pathway, "_", KEGG_name, ".pdf"))
-nonNorm_Counts_filt_hm <- ComplexHeatmap::Heatmap(matrix=nonNorm_Counts_filt, width = unit(dimension, "cm"),name = kegg_pathway)
-print(nonNorm_Counts_filt_hm)
-
-dev.off()
-}
-
-# Run the function
-interesting_TEAD1inh_pathways <- KEGG_TEAD1_inh$Description[1:12]
-
-for (i in 1:length(interesting_TEAD1inh_pathways)) {
-gimme_heatmap_from_kegg(path="KEGG_heatmaps/TEAD1inh/",
-                        KEGG_input = KEGG_TEAD1_inh, 
-                        KEGG_name = "TEAD1inh",
-                        kegg_pathway = interesting_TEAD1inh_pathways[i], 
-                        TPM_counts=nonNorm_Counts$sorted_table_inhibitors_TPM)
-}
-
-# Run the function
-interesting_panTEADinh_pathways <- KEGG_panTEAD_inh$Description[c(1,3:12)] # Note, in one of the pathways is an odd gene thats not expressed, causing an error when running.
-
-for (i in 1:length(interesting_panTEADinh_pathways)) {
-gimme_heatmap_from_kegg(path="KEGG_heatmaps/panTEADinh/",
-                        KEGG_input = KEGG_panTEAD_inh, 
-                        KEGG_name = "panTEADinh",
-                        kegg_pathway = interesting_panTEADinh_pathways[i], 
-                        TPM_counts=nonNorm_Counts$sorted_table_inhibitors_TPM)
-}
-
-interesting_siSLC16A5_pathways <- KEGG_siSLC16A5$Description[1:10]
-
-for (i in 1:length(interesting_siSLC16A5_pathways)) {
-gimme_heatmap_from_kegg(path="KEGG_heatmaps/siSLC16A5/",
-                        KEGG_input = KEGG_siSLC16A5, 
-                        KEGG_name = "siSLC16A5",
-                        kegg_pathway = interesting_siSLC16A5_pathways[i], 
-                        TPM_counts=nonNorm_Counts$sorted_table_siRNA_TPM[c(1:4,8:12)],
-                        dimension=7)
-}
-```
-
-
-
-# Gene set enrichment analysis (GSEA)
-```{r}
-# rank genes by signed -log10 P value
-gsea_genes_rnk <- lapply(inhibitor_RDS$unfilt[c('TEAD1_vs_control','panTEAD_vs_control')], function(x) {
-  x %>% 
-    dplyr::mutate(neg_log10Pval = -log10(pvalue)*sign(log2FoldChange)) %>% 
-    dplyr::mutate(neg_log10Pval = ifelse(is.na(neg_log10Pval), 0, neg_log10Pval)) %>%
-    dplyr::arrange(dplyr::desc(neg_log10Pval)) %>% 
-    dplyr::filter(!external_gene_name=="")
-})
-
-source('/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/code/00_helper_functions.R')
-gene_sets <- list()
-gene_sets$reactome <- readGMT('/Users/christiansom/Downloads/c2.cp.reactome.v2023.1.Hs.symbols.gmt')
-
-# run GSEA
-gsea_res <- lapply(gsea_genes_rnk, function(x) {
-  runGSEA(gene.rnk = setNames(x$neg_log10Pval,
-                              x$external_gene_name),
-          gene.sets = gene_sets$reactome$genesets,
-          min.size = 10,
-          max.size = 500,
-          nproc = 3)
-})
-
-as.vector(gsea_res$TEAD1_vs_control$collapsed$leadingEdge)
-```
-
-```{r}
-# rank genes by signed -log10 P value
-gsea_genes_rnk <- lapply(siRNA_RDS$unfilt[c('siSLC16A5_vs_siNT','siTEAD1_vs_siNT')], function(x) {
-  x %>% 
-    dplyr::mutate(neg_log10Pval = -log10(pvalue)*sign(log2FoldChange)) %>% 
-    dplyr::mutate(neg_log10Pval = ifelse(is.na(neg_log10Pval), 0, neg_log10Pval)) %>%
-    dplyr::arrange(dplyr::desc(neg_log10Pval)) %>% 
-    dplyr::filter(!external_gene_name=="")
-})
-
-source('/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/code/00_helper_functions.R')
-gene_sets <- list()
-gene_sets$reactome <- readGMT('/Users/christiansom/Downloads/c2.cp.reactome.v2023.1.Hs.symbols.gmt')
-
-# run GSEA
-gsea_res_siRNA <- lapply(gsea_genes_rnk, function(x) {
-  runGSEA(gene.rnk = setNames(x$neg_log10Pval,
-                              x$external_gene_name),
-          gene.sets = gene_sets$reactome$genesets,
-          min.size = 10,
-          max.size = 500,
-          nproc = 3)
-})
 ```
 
 # Gene expression trend analysis
@@ -438,31 +131,24 @@ library(Mfuzz)
 # CLUSTERING WITH ONLY Inhibitors DEG
 
 # Clustering of expression profiles
-DESeq2_DEGs_clust <- list(TEAD1_inhvsCTRL, panTEAD_inhvsCTRL)
+DESeq2_DEGs_clust <- list(TEADap_inh_vs_control, TEADsf_inh_vs_control)
 
-names(DESeq2_DEGs_clust) <- c("TEAD1_inhvsCTRL", "panTEAD_inhvsCTRL")
+names(DESeq2_DEGs_clust) <- c("TEADap_inh_vs_control", "TEADsf_inh_vs_control")
   
 DEGs_union <- lapply(DESeq2_DEGs_clust, function(x) x$ensembl_gene_id) %>% 
   unlist() %>% 
   unique()
 
-# TPM - normalized tables
-nonNorm_Counts <- readRDS("230531_exported_TPM_spheroids.rds")
- 
-meta_table_inhibitors <- read.table("230531_meta_table_inhibitor_grpTrsfm.txt", header=T)
+# TPM - normalized table with the average TPM (computed in Spheroid DESeq2 analysis script)
+nonNorm_Counts <- read.delim("results/spheroid_TPM_norm_counts_mean.txt")
 
-TPM_Normalized <- nonNorm_Counts$sorted_table_inhibitors_TPM
-colSums(TPM_Normalized[2:9])
-
-TPM_Normalized.2 <- TPM_Normalized %>% 
-  tibble::column_to_rownames("ensembl_gene_id") %>% 
+TPM_Normalized <- nonNorm_Counts %>% tibble::column_to_rownames("ensembl_gene_id") %>% 
   dplyr::select(-description, -external_gene_name)
+colSums(TPM_Normalized) 
+ 
+source("code/00_helper_functions.R")
 
-source("~/Library/CloudStorage/OneDrive-KarolinskaInstitutet/DATA_PhD/Estrogen_Receptor/201112_ChristianPlottingV1.0.R")
-
-eset <- TPM_Normalized.2 %>% 
-  groupTransform_nontibble(group.lbls = meta_table_inhibitors$Condition, 
-                 FUN = function(x) apply(x,1,mean)) %>% 
+eset <- TPM_Normalized %>% 
   dplyr::filter(row.names(.) %in% DEGs_union)
 
 # zscore data (mean=0, sd=1)
@@ -498,7 +184,8 @@ cluster_memberships <- do.call(rbind,
   dplyr::mutate(CLUSTER=dplyr::recode(CLUSTER, !!!setNames(c(2,1), seq(1,2,1))))
 
 # check number of genes per cluster
-table(cluster_memberships$CLUSTER)
+cluster_gene_counts <- table(cluster_memberships$CLUSTER)
+cluster_gene_counts
 ```
 
 ```{r}
@@ -508,426 +195,43 @@ DEG_clusters$genes <- as.data.frame(exprs(eset)) %>%
   tibble::rownames_to_column(var = 'geneID') %>% 
   tibble::add_column(GeneSymbol = .$geneID, .after = 'geneID') %>% 
   dplyr::mutate(GeneSymbol=dplyr::recode(GeneSymbol, 
-                                         !!!setNames(inhibitor_RDS$unfilt$TEAD1_vs_control$external_gene_name, 
-                                                     inhibitor_RDS$unfilt$TEAD1_vs_control$ensembl_gene_id))) %>% 
+                                         !!!setNames(inhibitor_RDS$unfilt$TEADap_vs_control$external_gene_name, 
+                                                     inhibitor_RDS$unfilt$TEADap_vs_control$ensembl_gene_id))) %>% 
   merge(cluster_memberships, by.x = 'geneID', by.y = 'NAME', sort = F)
 
 # extract cluster centroid profiles
 DEG_clusters$centroids <- as.data.frame(clusters$centers) %>% 
-  tibble::add_column(geneID = paste0('centroid_', c(2,1)), .before = 'plusFFA') %>% 
-  tibble::add_column(GeneSymbol = paste0('centroid_', c(2,1)), .before = 'plusFFA') %>%
+  tibble::add_column(geneID = paste0('centroid_', c(2,1)), .before = 'control') %>% 
+  tibble::add_column(GeneSymbol = paste0('centroid_', c(2,1)), .before = 'control') %>%
   dplyr::mutate(CLUSTER=c(2,1),
                 MEM.SHIP=1) %>% 
   arrange(CLUSTER)
 
 df <- DEG_clusters$genes %>% 
   dplyr::bind_rows(DEG_clusters$centroids) %>% 
-  tidyr::pivot_longer(cols = c("plusFFA", "TEAD1_inh", "panTEAD_inh"), 
+  tidyr::pivot_longer(cols = c("control", "TEADsf", "TEADap"), 
                       names_to = 'condition', 
                       values_to = 'expression') %>% 
   dplyr::mutate(CLUSTER=factor(CLUSTER, levels = 1:2),
-                condition=factor(condition, levels = c("plusFFA", "panTEAD_inh", "TEAD1_inh")))
+                condition=factor(condition, levels = c("control", "TEADsf", "TEADap")))
+
+cluster_names <- c('1' = paste0("Cluster 1 (n=",cluster_gene_counts[1],")"),
+                   '2' = paste0("Cluster 2 (n=",cluster_gene_counts[2],")"))
 
 ggplot(df, aes(x=condition, y=expression, color=CLUSTER, group=geneID)) +
   geom_line(data = subset(df, !grepl('centroid', GeneSymbol)), size = 1,  color=alpha('#AEAEAE', 0.15)) +
-  geom_line(data = subset(df, grepl('centroid', GeneSymbol)), size = 1.2) +
-  geom_point(data = subset(df, grepl('centroid', GeneSymbol)), shape=21, size=3, stroke=1.5, fill='white') +
+  geom_line(data = subset(df, grepl('centroid', GeneSymbol)), size = 1.2, linetype="dotted", color="black") +
+  geom_point(data = subset(df, grepl('centroid', GeneSymbol)), shape=21, size=3, stroke=1.5, fill='white', color="black") +
   #scale_color_manual(values = colPals$clusters) +
-  facet_wrap(~CLUSTER, nrow = 1) +
+  facet_wrap(~CLUSTER, nrow = 1, labeller = as_labeller(cluster_names)) +
   theme_bw() +
   theme(strip.background = element_blank(),
         axis.text.x=element_text(angle=90, hjust=0.95, vjust=0.5))
-
-ggsave("230609_cMeans_clustering_inhibitors_2clust.pdf", width = 23, height=10, units="cm")
-write.table(DEG_clusters$genes, "230609_cMeans_clustering_inhibitors_2clust.txt", sep="\t", row.names = F, quote = F)
-```
-# See how the genes in cluster 1 and 2 respond in mouse
-```{r}
-DEG_clusters$genes <- DEG_clusters$genes %>% rename(geneID = "GeneID_human")
-
-orthologs
-
-DEG_clusters_mmus_orths <- inner_join(orthologs, DEG_clusters$genes, by="GeneID_human")
-
-# Make a dataframe with the mouse Ensembl_IDs plus cluster identification
-Mouse_TEAD1_Cluster <- data.frame(GeneID_mouse=DEG_clusters_mmus_orths$GeneID_mouse,
-                                  GeneSymbol_mouse=DEG_clusters_mmus_orths$GeneSymbol_mouse,
-                                  CLUSTER=DEG_clusters_mmus_orths$CLUSTER)
-
-Mouse_TEAD1_Cluster1 <- Mouse_TEAD1_Cluster %>% filter(CLUSTER==1) %>% dplyr::pull("GeneID_mouse")
-Mouse_TEAD1_Cluster2 <- Mouse_TEAD1_Cluster %>% filter(CLUSTER==2) %>% dplyr::pull("GeneID_mouse")
-
-
-# RNAseq data from mouse
-RNAseq <- readRDS('~/Documents/GitHub/MAFLD_ER_agonists/results/bulkRNAseq_mmus_data_filt_norm.rds')
-```
-
-# For Cluster 1
-```{r}
-eset <- RNAseq$tpm %>% 
-  groupTransform_nontibble(group.lbls = RNAseq$design_meta$condition, 
-                 FUN = function(x) apply(x,1,mean)) %>% 
-  dplyr::filter(row.names(.) %in% Mouse_TEAD1_Cluster1) %>% 
-  dplyr::select(CDm, HFDm, DPN, DIP, E2, PPT)
-
-# zscore data (mean=0, sd=1)
-eset <- new('ExpressionSet', exprs = as.matrix(eset)) %>% 
-  Mfuzz::standardise()
-
-# estimate fuzzifier parameter for clustering
-m_eset <- Mfuzz::mestimate(eset)
-
-# determine cluster number with minimum centroid distance
-Mfuzz::Dmin(eset, m = m_eset, crange = seq(2,20,1), repeats = 5)
-
-set.seed(3452)
-
-# generate mfuzz clusters (n=4)
-clusters <- mfuzz(eset, c = 2, m = m_eset)
-
-# check correlation of cluster centroids
-cor(t(clusters[[1]]))
-
-# get cluster membership values of genes
-cluster_memberships <- acore(eset, cl = clusters, min.acore = 0.0)
-
-# assign to cluster with top membership value
-cluster_memberships <- do.call(rbind, 
-                               lapply(seq_along(cluster_memberships), 
-                                      function(x) {data.frame(CLUSTER=x, 
-                                                              cluster_memberships[[x]])})) %>% 
-  dplyr::mutate(CLUSTER=dplyr::recode(CLUSTER, !!!setNames(c(2,1), seq(1,2,1))))
-
-# check number of genes per cluster
-table(cluster_memberships$CLUSTER)
-
-DEG_clusters <- list()
-# extract gene profiles and cluster assignments
-DEG_clusters$genes <- as.data.frame(exprs(eset)) %>% 
-  tibble::rownames_to_column(var = 'geneID') %>% 
-  tibble::add_column(GeneSymbol = .$geneID, .after = 'geneID') %>% 
-  dplyr::mutate(GeneSymbol=dplyr::recode(GeneSymbol, 
-                                         !!!setNames(orthologs$GeneSymbol_mouse, 
-                                                     orthologs$GeneID_mouse))) %>% 
-  merge(cluster_memberships, by.x = 'geneID', by.y = 'NAME', sort = F)
-
-# extract cluster centroid profiles
-DEG_clusters$centroids <- as.data.frame(clusters$centers) %>% 
-  tibble::add_column(geneID = paste0('centroid_', c(2,1)), .before = 'CDm') %>% 
-  tibble::add_column(GeneSymbol = paste0('centroid_', c(2,1)), .before = 'CDm') %>%
-  dplyr::mutate(CLUSTER=c(2,1),
-                MEM.SHIP=1) %>% 
-  arrange(CLUSTER)
-
-df <- DEG_clusters$genes %>% 
-  dplyr::bind_rows(DEG_clusters$centroids) %>% 
-  tidyr::pivot_longer(cols = c("CDm", "HFDm", "DPN", "DIP", "E2", "PPT"), 
-                      names_to = 'condition', 
-                      values_to = 'expression') %>% 
-  dplyr::mutate(CLUSTER=factor(CLUSTER, levels = 1:2),
-                condition=factor(condition, levels = c("CDm", "HFDm", "DPN", "DIP", "E2", "PPT")))
-
-ggplot(df, aes(x=condition, y=expression, color=CLUSTER, group=geneID)) +
-  geom_line(data = subset(df, !grepl('centroid', GeneSymbol)), size = 1,  color=alpha('#AEAEAE', 0.15)) +
-  geom_line(data = subset(df, grepl('centroid', GeneSymbol)), size = 1.2) +
-  geom_point(data = subset(df, grepl('centroid', GeneSymbol)), shape=21, size=3, stroke=1.5, fill='white') +
-  #scale_color_manual(values = colPals$clusters) +
-  facet_wrap(~CLUSTER, nrow = 1) +
-  theme_bw() +
-  theme(strip.background = element_blank(),
-        axis.text.x=element_text(angle=90, hjust=0.95, vjust=0.5))
-
-ggsave("230615_cMeans_clustering_TEAD_c1_in_mouse_2clust.pdf", width = 23, height=10, units="cm")
-write.table(DEG_clusters$genes, "230615_cMeans_clustering_TEAD_c1_in_mouse_2clust.pdf", sep="\t", row.names = F, quote = F)
-```
-
-# For Cluster 2
-```{r}
-eset <- RNAseq$tpm %>% 
-  groupTransform_nontibble(group.lbls = RNAseq$design_meta$condition, 
-                 FUN = function(x) apply(x,1,mean)) %>% 
-  dplyr::filter(row.names(.) %in% Mouse_TEAD1_Cluster2) %>% 
-  dplyr::select(CDm, HFDm, DPN, DIP, E2, PPT)
-
-# zscore data (mean=0, sd=1)
-eset <- new('ExpressionSet', exprs = as.matrix(eset)) %>% 
-  Mfuzz::standardise()
-
-# estimate fuzzifier parameter for clustering
-m_eset <- Mfuzz::mestimate(eset)
-
-# determine cluster number with minimum centroid distance
-Mfuzz::Dmin(eset, m = m_eset, crange = seq(2,20,1), repeats = 5)
-
-set.seed(3452)
-
-# generate mfuzz clusters (n=4)
-clusters <- mfuzz(eset, c = 2, m = m_eset)
-
-# check correlation of cluster centroids
-cor(t(clusters[[1]]))
-
-# get cluster membership values of genes
-cluster_memberships <- acore(eset, cl = clusters, min.acore = 0.0)
-
-# assign to cluster with top membership value
-cluster_memberships <- do.call(rbind, cluster_memberships)
-  #                              lapply(seq_along(), 
-  #                                     function(x) {data.frame(CLUSTER=x, 
-  #                                                             cluster_memberships[[x]])})) %>% 
-  # dplyr::mutate(CLUSTER=dplyr::recode(CLUSTER, !!!setNames(c(2,1), seq(1,2,1))))
-
-# check number of genes per cluster
-table(cluster_memberships$CLUSTER)
-
-DEG_clusters <- list()
-# extract gene profiles and cluster assignments
-DEG_clusters$genes <- as.data.frame(exprs(eset)) %>% 
-  tibble::rownames_to_column(var = 'geneID') %>% 
-  tibble::add_column(GeneSymbol = .$geneID, .after = 'geneID') %>% 
-  dplyr::mutate(GeneSymbol=dplyr::recode(GeneSymbol, 
-                                         !!!setNames(orthologs$GeneSymbol_mouse, 
-                                                     orthologs$GeneID_mouse))) %>% 
-  merge(cluster_memberships, by.x = 'geneID', by.y = 'NAME', sort = F)
-
-# extract cluster centroid profiles
-DEG_clusters$centroids <- as.data.frame(clusters$centers) %>% 
-  tibble::add_column(geneID = paste0('centroid_', c(2,1)), .before = 'CDm') %>% 
-  tibble::add_column(GeneSymbol = paste0('centroid_', c(2,1)), .before = 'CDm') %>%
-  dplyr::mutate(CLUSTER=c(2,1),
-                MEM.SHIP=1) %>% 
-  arrange(CLUSTER)
-
-df <- DEG_clusters$genes %>% 
-  dplyr::bind_rows(DEG_clusters$centroids) %>% 
-  tidyr::pivot_longer(cols = c("CDm", "HFDm", "DPN", "DIP", "E2", "PPT"), 
-                      names_to = 'condition', 
-                      values_to = 'expression') %>% 
-  dplyr::mutate(CLUSTER=factor(CLUSTER, levels = 1:2),
-                condition=factor(condition, levels = c("CDm", "HFDm", "DPN", "DIP", "E2", "PPT")))
-
-ggplot(df, aes(x=condition, y=expression, color=CLUSTER, group=geneID)) +
-  geom_line(data = subset(df, !grepl('centroid', GeneSymbol)), size = 1,  color=alpha('#AEAEAE', 0.15)) +
-  geom_line(data = subset(df, grepl('centroid', GeneSymbol)), size = 1.2) +
-  geom_point(data = subset(df, grepl('centroid', GeneSymbol)), shape=21, size=3, stroke=1.5, fill='white') +
-  #scale_color_manual(values = colPals$clusters) +
-  facet_wrap(~CLUSTER, nrow = 1) +
-  theme_bw() +
-  theme(strip.background = element_blank(),
-        axis.text.x=element_text(angle=90, hjust=0.95, vjust=0.5))
-
-ggsave("230615_cMeans_clustering_TEAD_c2_in_mouse_2clust.pdf", width = 23, height=10, units="cm")
-write.table(DEG_clusters$genes, "230615_cMeans_clustering_TEAD_c2_in_mouse_2clust.pdf", sep="\t", row.names = F, quote = F)
-```
-
-
-# Gene expression trend analysis with single replicates
-```{r}
-library(Mfuzz)
-# CLUSTERING WITH ONLY Inhibitors DEG
-
-# Clustering of expression profiles
-DESeq2_DEGs_clust <- list(TEAD1_inhvsCTRL, panTEAD_inhvsCTRL)
-
-names(DESeq2_DEGs_clust) <- c("TEAD1_inhvsCTRL", "panTEAD_inhvsCTRL")
   
-DEGs_union <- lapply(DESeq2_DEGs_clust, function(x) x$ensembl_gene_id) %>% 
-  unlist() %>% 
-  unique()
 
-# TPM - normalized tables
-nonNorm_Counts <- readRDS("230531_exported_TPM_spheroids.rds")
- 
-meta_table_inhibitors <- read.table("230531_meta_table_inhibitor_grpTrsfm.txt", header=T)
-
-TPM_Normalized <- nonNorm_Counts$sorted_table_inhibitors_TPM
-colSums(TPM_Normalized[2:9])
-
-TPM_Normalized.2 <- TPM_Normalized %>% 
-  tibble::column_to_rownames("ensembl_gene_id") %>% 
-  dplyr::select(-description, -external_gene_name)
-
-eset <- TPM_Normalized.2 %>% 
-  dplyr::filter(row.names(.) %in% DEGs_union)
-
-# zscore data (mean=0, sd=1)
-eset <- new('ExpressionSet', exprs = as.matrix(eset)) %>% 
-  Mfuzz::standardise()
-
-# estimate fuzzifier parameter for clustering
-m_eset <- Mfuzz::mestimate(eset)
-
-# determine cluster number with minimum centroid distance
-Mfuzz::Dmin(eset, m = m_eset, crange = seq(2,20,1), repeats = 5)
+#ggsave("cMeans_clustering_inhibitors_2clusters.pdf", width = 23, height=10, units="cm")
+#write.table(DEG_clusters$genes, "cMeans_clustering_inhibitors_2clusters.txt", sep="\t", row.names = F, quote = F)
 ```
-
-```{r}
-set.seed(34502)
-
-# generate mfuzz clusters (n=4)
-clusters <- mfuzz(eset, c = 2, m = m_eset)
-
-# check correlation of cluster centroids
-cor(t(clusters[[1]]))
-```
-
-```{r}
-# get cluster membership values of genes
-cluster_memberships <- acore(eset, cl = clusters, min.acore = 0.0)
-
-# assign to cluster with top membership value
-cluster_memberships <- do.call(rbind, 
-                               lapply(seq_along(cluster_memberships), 
-                                      function(x) {data.frame(CLUSTER=x, 
-                                                              cluster_memberships[[x]])})) %>% 
-  dplyr::mutate(CLUSTER=dplyr::recode(CLUSTER, !!!setNames(c(2,1), seq(1,2,1))))
-
-# check number of genes per cluster
-table(cluster_memberships$CLUSTER)
-```
-
-```{r}
-DEG_clusters <- list()
-# extract gene profiles and cluster assignments
-DEG_clusters$genes <- as.data.frame(exprs(eset)) %>% 
-  tibble::rownames_to_column(var = 'geneID') %>% 
-  tibble::add_column(GeneSymbol = .$geneID, .after = 'geneID') %>% 
-  dplyr::mutate(GeneSymbol=dplyr::recode(GeneSymbol, 
-                                         !!!setNames(inhibitor_RDS$unfilt$TEAD1_vs_control$external_gene_name, 
-                                                     inhibitor_RDS$unfilt$TEAD1_vs_control$ensembl_gene_id))) %>% 
-  merge(cluster_memberships, by.x = 'geneID', by.y = 'NAME', sort = F)
-
-# extract cluster centroid profiles
-DEG_clusters$centroids <- as.data.frame(clusters$centers) %>% 
-  tibble::add_column(geneID = paste0('centroid_', c(2,1)), .before = 'plusFFA.noDMSO.1_S10') %>% 
-  tibble::add_column(GeneSymbol = paste0('centroid_', c(2,1)), .before = 'plusFFA.noDMSO.1_S10') %>%
-  dplyr::mutate(CLUSTER=c(2,1),
-                MEM.SHIP=1) %>% 
-  arrange(CLUSTER)
-
-df <- DEG_clusters$genes %>% 
-  dplyr::bind_rows(DEG_clusters$centroids) %>% 
-  tidyr::pivot_longer(cols = c("plusFFA.noDMSO.1_S10", "plusFFA.noDMSO.2_S11", "plusFFA.noDMSO.3_S12", "TEAD1.inh.1_S13" ,     "TEAD1.inh.2_S14", "panTEAD.inh.1_S16","panTEAD.inh.2_S17" ,"panTEAD.inh.3_S18"), 
-                      names_to = 'condition', 
-                      values_to = 'expression') %>% 
-  dplyr::mutate(CLUSTER=factor(CLUSTER, levels = 1:2),
-                condition=factor(condition, levels = c("plusFFA.noDMSO.1_S10", "plusFFA.noDMSO.2_S11", "plusFFA.noDMSO.3_S12", "TEAD1.inh.1_S13" ,     "TEAD1.inh.2_S14", "panTEAD.inh.1_S16","panTEAD.inh.2_S17" ,"panTEAD.inh.3_S18")))
-
-ggplot(df, aes(x=condition, y=expression, color=CLUSTER, group=geneID)) +
-  geom_line(data = subset(df, !grepl('centroid', GeneSymbol)), size = 1,  color=alpha('#AEAEAE', 0.15)) +
-  geom_line(data = subset(df, grepl('centroid', GeneSymbol)), size = 1.2) +
-  geom_point(data = subset(df, grepl('centroid', GeneSymbol)), shape=21, size=3, stroke=1.5, fill='white') +
-  #scale_color_manual(values = colPals$clusters) +
-  facet_wrap(~CLUSTER, nrow = 1) +
-  theme_bw() +
-  theme(strip.background = element_blank(),
-        axis.text.x=element_text(angle=90, hjust=0.95, vjust=0.5))
-
-ggsave("230601_cMeans_clustering_inhibitors_singleRep_2clust.pdf", width = 23, height=10, units="cm")
-write.table(DEG_clusters$genes, "230601_cMeans_clustering_inhibitors_singleRep_2clust.txt", sep="\t", row.names = F, quote = F)
-```
-
-# Investigate the expression of genes in the top12 KEGG pathways in mouse - are they changed by any of the treatments?
-```{r}
-# Investigate the expression of the unified genes in mouse.
-orthologs <- read.delim("/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/data/ensembl_mmus_hsap_dec2021_orthologs.tsv")
-
-top_pathway_genes <- readRDS("/Users/christiansom/Documents/230525_spheroid_analyis/230615_top12KEGGpathways_gene_content.rds")
-top_pathway_genes2 <- do.call(rbind,top_pathway_genes) 
-top_pathway_genes3 <- top_pathway_genes2 %>% rename(SYMBOL="GeneSymbol_human") %>%  inner_join(. , orthologs, by="GeneSymbol_human") %>% filter(!GeneSymbol_human=="CYP2D6")
-length(unique(top_pathway_genes3$GeneSymbol_mouse))
-
-# Get the DEGs in mouse, unify all genes from the treatment conditions
-
-bulkRNAseq_mmus_DEG_sets <- readRDS("/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/results/bulkRNAseq_mmus_DEGs.rds")
-
-Filtered_Mmus_DPN <- bulkRNAseq_mmus_DEG_sets$filt$DPNVsHFDm %>% filter(ensembl_gene_id %in% top_pathway_genes3$GeneID_mouse) # 10
-Filtered_Mmus_DIP <- bulkRNAseq_mmus_DEG_sets$filt$DIPVsHFDm %>% filter(ensembl_gene_id %in% top_pathway_genes3$GeneID_mouse) # 2
-Filtered_Mmus_E2 <- bulkRNAseq_mmus_DEG_sets$filt$E2VsHFDm %>% filter(ensembl_gene_id %in% top_pathway_genes3$GeneID_mouse)  # 10
-Filtered_Mmus_PPT <- bulkRNAseq_mmus_DEG_sets$filt$PPTVsHFDm %>% filter(ensembl_gene_id %in% top_pathway_genes3$GeneID_mouse) # 12
-# Altogether = 34, 18 unique ones.
-18/65*100
-
-agonist_DEGs <- list(DPN = bulkRNAseq_mmus_DEG_sets$filt$DPNVsHFDm,
-                     DIP = bulkRNAseq_mmus_DEG_sets$filt$DIPVsHFDm,
-                     E2 = bulkRNAseq_mmus_DEG_sets$filt$E2VsHFDm,
-                     PPT = bulkRNAseq_mmus_DEG_sets$filt$PPTVsHFDm)
-
-agonist_DEGs2 <- do.call(rbind, agonist_DEGs)
-Filtered_Mmus_allSets <- agonist_DEGs2 %>% filter(external_gene_name %in% top_pathway_genes3$GeneSymbol_mouse) %>% 
-  arrange(external_gene_name, log2FoldChange) %>% 
-  group_by(external_gene_name) %>% 
-  dplyr::slice(1)
-
-length(unique(Filtered_Mmus_allSets$external_gene_name))
-
-# Plot Venndiagram with the 18 genes that overlap between mouse and human KEGG terms
-
-## First determine how many genes in ALL pathways are in the Agonist vs HFDm genes in mouse. I downloaded the KEGG pathway content from "https://rest.kegg.jp/link/hsa/pathway" and modified the table in excel.
-
-KEGG_pathway_content <- read.delim("/Users/christiansom/Documents/230525_spheroid_analyis/230621_KEGG_pathway_Gene_content.txt")
-# This is from above, doing the KEGG analysis with TEAD1-inh
-TEAD1_inhvsCTRL_entrez <- bitr(TEAD1_inhvsCTRL$ensembl_gene_id, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = "org.Hs.eg.db")
-KEGG_TEAD1_inh <- enrichKEGG(gene = TEAD1_inhvsCTRL_entrez$ENTREZID,
-          organism = "hsa",
-          keyType = "kegg",
-          pAdjustMethod = "BH",
-          qvalueCutoff = 0.05)
-KEGG_TEAD1_inh <- as.data.frame(KEGG_TEAD1_inh@result)
-KEGG_TEAD1_inh_top12_kegg <- KEGG_TEAD1_inh[1:12,1]
-# Filter the pathways for the top12 pathways, contains 1400 genes roughly (some could be duplicated)
-KEGG_pathway_content_top12 <- KEGG_pathway_content %>%  filter(KEGG_pathway_identifier %in% KEGG_TEAD1_inh_top12_kegg)
-# Now convert the KEGG ids into Gene IDs and then use the ortholog list to retrieve the mouse gene symbols. Remove the weird cytochrome that has 25 different orthologs in mouse. Also remove the ones that are already in the other comparison.
-KEGG_pathway_content_top12_convert <- bitr(KEGG_pathway_content_top12$KEGG_ID, fromType = "ENTREZID", toType = "ENSEMBL", OrgDb = "org.Hs.eg.db") %>% rename(ENSEMBL="GeneID_human") %>% inner_join(.,orthologs, by="GeneID_human") %>% filter(!GeneSymbol_human=="CYP2D6") %>% filter(!GeneID_human %in% top_pathway_genes3$GeneID_human)
-length(unique(KEGG_pathway_content_top12_convert$GeneSymbol_mouse))
-# Check how many genes are in the agonist-treated HFD vs HFDm.
-background_agonist_vs_KEGGpathway_content <- agonist_DEGs2 %>% filter(ensembl_gene_id %in% KEGG_pathway_content_top12_convert$GeneID_mouse) 
-length(unique(background_agonist_vs_KEGGpathway_content$external_gene_name))
-
-68/607*100
-
-plot_odds <- data.frame(values = c(68, (607-68), 18, (65-18)),
-                        names = c(rep("Non_DEG_InTop12KEGG",2), rep("TEAD1i_DEG in Top12 KEGG",2)),
-                        shared = c(rep(c("DEG in ER agonist vs HFDm", "Not DEG in ER agonist vs HFDm"),2)))
-
-ggplot(plot_odds, aes(x=names, y=values, fill=shared)) +
-  geom_col() +
-  coord_flip() +
-  theme(text=element_text(size=15)) +
-  theme_bw() +
-  scale_fill_manual(values=c("black", "grey")) +
-  ylab("Gene count")
-
-ggsave("230621_stackedBar_odds_top12Pathways.pdf", width = 25, height=7, units = "cm")
-
-
- library(ggvenn)
-# Create Data
-venn <- list(B = sort(panTEAD_inhvsCTRL$ensembl_gene_id),
-                  A = TEAD1_inhvsCTRL$ensembl_gene_id)
-  
-# Create venn diagram Pairwise
-ggvenn(venn, c("A", "B"),
-       auto_scale=TRUE,
-       fill_color = c("#6ca9c1", "#c16c88"))
-
-ggsave("230608_ggvenn_TEAD1i_panTEADi_overlap.pdf")
-
-
-# Carlos did it, dont need the code here.
-# For the heatmap annotation, create subset with the highest log2FC per gene in the top12 KEGG pathways
-agonist_allGenes <- list(DPN = bulkRNAseq_mmus_DEG_sets$unfilt$DPNVsHFDm,
-                     DIP = bulkRNAseq_mmus_DEG_sets$unfilt$DIPVsHFDm,
-                     E2 = bulkRNAseq_mmus_DEG_sets$unfilt$E2VsHFDm,
-                     PPT = bulkRNAseq_mmus_DEG_sets$unfilt$PPTVsHFDm)
-
-agonist_allGenes2 <- do.call(rbind, agonist_allGenes)
-Filtered_Mmus_allGenes <- agonist_allGenes2 %>% filter(external_gene_name %in% top_pathway_genes3$GeneSymbol_mouse) %>% 
-  arrange(external_gene_name, log2FoldChange) %>% 
-  group_by(external_gene_name) %>% 
-  dplyr::slice(1)
-```
-
 
 ```{r}
 sessionInfo()

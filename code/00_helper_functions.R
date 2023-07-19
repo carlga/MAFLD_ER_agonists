@@ -112,6 +112,20 @@ groupTransform <- function(x, group.lbls, FUN) {
   return(as.data.frame(res))
 }
 
+#From Carlos, but modified so it doesnt make tibbles
+groupTransform_nontibble <- function(x, group.lbls, FUN) {
+  
+  
+  group.lbls.uniq <- unique(group.lbls)
+  group.lbls.uniq <- split(group.lbls.uniq, 1:length(group.lbls.uniq))
+  
+  res <- lapply(group.lbls.uniq, function(lbl) FUN(x[, group.lbls==lbl]))
+  res <- dplyr::bind_cols(res)
+  colnames(res) <- unlist(group.lbls.uniq)
+  res <- as.data.frame(res)
+  row.names(res) <- row.names(x)
+  return(res)
+}
 
 #' Transforms data according to column-wise grouping using a function (e.g. mean, median...)
 #' @param x A dataframe or matrix

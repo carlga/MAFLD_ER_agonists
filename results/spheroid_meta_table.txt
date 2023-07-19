@@ -1,0 +1,9 @@
+Sample	Condition	Replicate
+1	plusFFA.noDMSO.1_S10	control	1
+2	plusFFA.noDMSO.2_S11	control	2
+3	plusFFA.noDMSO.3_S12	control	3
+4	TEAD1.inh.1_S13	TEADap	1
+5	TEAD1.inh.2_S14	TEADap	2
+6	panTEAD.inh.1_S16	TEADsf	1
+7	panTEAD.inh.2_S17	TEADsf	2
+8	panTEAD.inh.3_S18	TEADsf	3

@@ -52,14 +52,15 @@ print(sorted_table_inhibitors)
 ```{r}
 sample_name_inhibitors <- names(sorted_table_inhibitors)
 replicate_inhibitors <- c(1,2,3,1,2,1,2,3)
-Condition_inhibitors <- c(rep("plusFFA",3), rep("TEADap",2), rep("TEADsf",3))
+Condition_inhibitors <- c(rep("control",3), rep("TEADap",2), rep("TEADsf",3))
 meta_table_inhibitors <- data.frame(Sample=sample_name_inhibitors, Condition=Condition_inhibitors, Replicate=replicate_inhibitors)
+write.table(meta_table_inhibitors, "results/spheroid_meta_table.txt", sep="\t", quote=F)
 ```
 # Export TPM-normalized count table
 ```{r}
 # normalize to TPM
 source("code/00_helper_functions.R") # @ Carlos have to change the nontibble part
-sorted_table_inhibitors_TPM <- normalizeData(x=sorted_table_inhibitors, method = "TPM", len = sorted_table$Length) 
+sorted_table_inhibitors_TPM <- normalizeData(x=sorted_table_inhibitors, method = "TPM", len = count_table.2$Length) 
 
 sorted_table_inhibitors_TPM_mean <- groupTransform_nontibble(x=sorted_table_inhibitors_TPM, 
                group.lbls = meta_table_inhibitors$Condition,
@@ -78,9 +79,11 @@ annoData <- getBM(attributes=c("ensembl_gene_id","external_gene_name", "descript
 export_TPM_normTables <- list(sorted_table_inhibitors_TPM=sorted_table_inhibitors_TPM, 
                               sorted_table_inhibitors_TPM_mean=sorted_table_inhibitors_TPM_mean)
 
-export_TPM_normTables <- lapply(export_TPM_normTables, inner_join, y = annoData, by = 'ensembl_gene_id')
+export_TPM_normTables_single <- inner_join(export_TPM_normTables$sorted_table_inhibitors_TPM, y = annoData, by = 'ensembl_gene_id')
+export_TPM_normTables_mean <- inner_join(export_TPM_normTables$sorted_table_inhibitors_TPM_mean, y = annoData, by = 'ensembl_gene_id')
 
-write.table(export_TPM_normTables, "results/spheroid_TPM_norm_counts.txt", sep="\t", quote=F)
+write.table(export_TPM_normTables_single, "results/spheroid_TPM_norm_counts.txt", sep="\t", quote=F, row.names = F)
+write.table(export_TPM_normTables_mean, "results/spheroid_TPM_norm_counts_mean.txt", sep="\t", quote=F, row.names = F)
 ```
 
 # Run DESeq2 function and plot a PCA
@@ -109,8 +112,8 @@ ggplot(PCA.to.plot_inhibitors$data, aes(x=PC1, y=PC2, fill=group), color="black"
 DESeq2_DEGs_inhibitors <- list()
 # comparisons
 DESeq2_DEGs_inhibitors$unfilt <- list(
-  TEADap_vs_control = results(ds_data_inhibitors.filt, contrast = c('Condition', 'TEADap', 'plusFFA')),
-  TEADsf_vs_control = results(ds_data_inhibitors.filt, contrast = c('Condition', 'TEADsf', 'plusFFA')))
+  TEADap_vs_control = results(ds_data_inhibitors.filt, contrast = c('Condition', 'TEADap', 'control')),
+  TEADsf_vs_control = results(ds_data_inhibitors.filt, contrast = c('Condition', 'TEADsf', 'control')))
 
 names(DESeq2_DEGs_inhibitors$unfilt)
 
