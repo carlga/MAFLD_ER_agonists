@@ -135,7 +135,7 @@ gr_closest_long_anno_closest_genes <- as.data.frame(gr_closest_long_anno_closest
 TPM_filt <- TPM %>%
   dplyr::filter(ensembl_gene_id%in%gr_closest_long_anno_closest_genes$ensembl_gene_id)
 
-chrom_TPM <- inner_join(gr_closest_long_anno_closest_genes, TPM_filt, by= "ensembl_gene_id") # 2 entries get missing
+chrom_TPM <- inner_join(gr_closest_long_anno_closest_genes, TPM_filt, by= "ensembl_gene_id")
 
 chrom_TPM2 <- chrom_TPM %>%
   dplyr::select("loc_ID" ,"seqnames", "start", "end", "enha.ID", "query_ID", "symbol", "ensembl_gene_id", "CDm2", "CDm9", "HFDm3", "HFDm4","DPN2", "DPN3", "E2_8", "E2_9")
@@ -191,7 +191,7 @@ K27_GE_long_group <- K27_GE_long_dd %>% group_by(loc_ID, query_ID) %>%
   mutate(correlation_spearman = cor(Gene_expression, H3K27ac, method="spearman"))
 
 # Export a table for all ESEG with correlations BEFORE filtering anything.
-#write.table(K27_GE_long_group, "Supplementary_tables/SupplementaryTable_Initial_ESEG_genes_corr.txt", quote=F, row.names=F, sep="\t")
+write.table(K27_GE_long_group, "Supplementary_tables/SupplementaryTable_Initial_ESEG_genes_corr.txt", quote=F, row.names=F, sep="\t")
 
 # Filter the ESEGs for a | pearson correlation |  > 0.75
 K27_GE_long_group_plot_pearson <- K27_GE_long_group %>%
@@ -199,7 +199,7 @@ K27_GE_long_group_plot_pearson <- K27_GE_long_group %>%
   group_by(loc_ID, query_ID) %>%
   mutate(name.ident = paste0(symbol, "_", loc_ID))
 nrow(K27_GE_long_group_plot_pearson)/8  # 764 enhancer gene pairs remain.
-#write.table(K27_GE_long_group_plot_pearson, "Supplementary_tables/SupplementaryTable_step2_ESEG_genes_corr_0.75pearson.txt", quote=F, row.names=F, sep="\t")
+write.table(K27_GE_long_group_plot_pearson, "Supplementary_tables/SupplementaryTable_step2_ESEG_genes_corr_0.75pearson.txt", quote=F, row.names=F, sep="\t")
 
 # Also for spearman, but is not used in the end.
 K27_GE_long_group %>%
@@ -216,7 +216,7 @@ K27_GE_long_rev_insect <-  K27_GE_long_group_plot_pearson %>%
 length(unique(K27_GE_long_rev_insect$ensembl_gene_id)) # 67 unique genes remain after filtering for reverted gene set.
 nrow(K27_GE_long_rev_insect)/8 # 131 enhancer gene pairs remain after filtering
 
-#write.table(K27_GE_long_rev_insect, "Supplementary_tables/SupplementaryTable_step3_ESEG_genes_corr_0.75pearson_reverted.txt", quote=F, row.names=F, sep="\t")
+write.table(K27_GE_long_rev_insect, "Supplementary_tables/SupplementaryTable_step3_ESEG_genes_corr_0.75pearson_reverted.txt", quote=F, row.names=F, sep="\t")
 ```
 #Add 50kb to intersect CTCF peaks with the H3K27ac peaks
 ```{r}
@@ -241,8 +241,8 @@ K27_GE_long_group_coordinates_right_export <- K27_GE_long_group_coordinates_righ
   dplyr::select("chrom", "new_start", "new_end", "loc_ID", "query_ID", "symbol") %>%
   unique()
 
-#write.table(K27_GE_long_group_coordinates_left_export, "results/Epigenome_analysis/H3K27ac_left_non_intersect.bed", quote=F, row.names = F, sep="\t")
-#write.table(K27_GE_long_group_coordinates_right_export, "results/Epigenome_analysis/H3K27ac_right_non_intersect.bed", quote=F, row.names=F, sep="\t")
+write.table(K27_GE_long_group_coordinates_left_export, "results/Epigenome_analysis/H3K27ac_left_non_intersect.bed", quote=F, row.names = F, sep="\t")
+write.table(K27_GE_long_group_coordinates_right_export, "results/Epigenome_analysis/H3K27ac_right_non_intersect.bed", quote=F, row.names=F, sep="\t")
 
 #From here, intersect the CTCF peaks with the exported H3K27ac regions using BEDtools (command line)
 ```
