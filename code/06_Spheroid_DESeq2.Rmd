@@ -33,7 +33,7 @@ count_table <- read.table("data/raw_fq_featurecounts_inhibitors_spheroids.txt", 
 names(count_table) <- gsub("hisat2_aligned\\.|\\.bam", "", names(count_table)) 
 
 count_table.2 <- count_table  %>% tibble::column_to_rownames("Geneid") %>% dplyr::select(2:9) 
-print(count_table.2)
+head(count_table.2)
 ```
 # Design metatables
 ```{r}
@@ -60,7 +60,7 @@ count_table_TPM <- count_table_TPM %>%
               tibble::rownames_to_column("ensembl_gene_id")
 
 # Add the external_gene_names 
-listEnsemblArchives()
+#listEnsemblArchives()
 mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl", host="https://oct2022.archive.ensembl.org") #, host = "https://oct2022.archive.ensembl.org"
 annoData <- getBM(attributes=c("ensembl_gene_id","external_gene_name", "description"),mart=mart)
 
@@ -70,13 +70,13 @@ export_TPM_normTables <- list(count_table_TPM=count_table_TPM,
 export_TPM_normTables_single <- inner_join(export_TPM_normTables$count_table_TPM, y = annoData, by = 'ensembl_gene_id')
 export_TPM_normTables_mean <- inner_join(export_TPM_normTables$count_table_TPM_mean, y = annoData, by = 'ensembl_gene_id')
 
-write.table(export_TPM_normTables_single, "results/spheroid_TPM_norm_counts_n.txt", sep="\t", quote=F, row.names = F)
-write.table(export_TPM_normTables_mean, "results/spheroid_TPM_norm_counts_mean_n.txt", sep="\t", quote=F, row.names = F)
+write.table(export_TPM_normTables_single, "results/spheroid_TPM_norm_counts.txt", sep="\t", quote=F, row.names = F)
+write.table(export_TPM_normTables_mean, "results/spheroid_TPM_norm_counts_mean.txt", sep="\t", quote=F, row.names = F)
 ```
 
 # Run DESeq2 function and plot a PCA
 ```{r}
-ds_data_inhibitors <- DESeqDataSetFromMatrix(countData = sorted_table_inhibitors,
+ds_data_inhibitors <- DESeqDataSetFromMatrix(countData = count_table.2,
                                  colData = meta_table_inhibitors,
                                  design = ~ 0 + Condition)
 ds_data_inhibitors <- estimateSizeFactors(ds_data_inhibitors)
