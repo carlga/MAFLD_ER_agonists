@@ -132,6 +132,11 @@ ggplot(DEG_counts_inhibitors, aes(x=DEG_counts, y=factor(Condition, levels=rev(n
   ylab("")
 
 saveRDS(DESeq2_DEGs_inhibitors, "results/Spheroid_inhibitors_DEGlists.rds")
+
+write.table(DESeq2_DEGs_inhibitors$unfilt$TEADap_vs_control, "results/TEADap_vs_control_unfilt_DESeq2.txt", sep="\t", row.names=F, quote=F)
+write.table(DESeq2_DEGs_inhibitors$unfilt$TEADsf_vs_control, "results/TEADsf_vs_control_unfilt_DESeq2.txt", sep="\t", row.names=F, quote=F)
+write.table(DESeq2_DEGs_inhibitors$filt$TEADap_vs_control, "results/TEADap_vs_control_DEGs_DESeq2.txt", sep="\t", row.names=F, quote=F)
+write.table(DESeq2_DEGs_inhibitors$filt$TEADsf_vs_control, "results/TEADsf_vs_control_DEGs_DESeq2.txt", sep="\t", row.names=F, quote=F)
 ```
 
 ```{r}

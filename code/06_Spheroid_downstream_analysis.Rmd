@@ -25,7 +25,6 @@ library(clusterProfiler)
 library(tidyverse)
 library(org.Hs.eg.db)
 library(fgsea)
-sessionInfo()
 ```
 
 # Load RDS files
@@ -69,11 +68,6 @@ gimme_SYMBOL_from_KEGG <- function(table, pathway) {
  
 }
 
-
-#This function tells you the gene symbols in each KEGG pathway (changed by TEADap)
-gimme_SYMBOL_from_KEGG(table=KEGG_TEADap_inh, pathway = "AMPK signaling pathway")
-gimme_SYMBOL_from_KEGG(table=KEGG_TEADap_inh, pathway = "PI3K-Akt signaling pathway")
-
 # This code exports the genes inside the top12 KEGG pathways of TEADap vs control with the corresponding human-readable symbols.
 KEGG_top12_pathway_geneList <- list()
 for (i in KEGG_TEADap_inh$Description[1:12]) {
@@ -88,8 +82,7 @@ for (i in KEGG_TEADap_inh$Description[1:12]) {
 KEGG_TEADap_inh <- read.delim("data/KEGG_TEADap_vs_control_FigS8A.txt")
 
 # Note: This following section is looped, so one can technically plot many results at once.
-list_KEGG <- list(KEGG_TEADap_inh=KEGG_TEADap_inh,
-                  KEGG_TEADsf_inh=KEGG_TEADsf_inh)
+list_KEGG <- list(KEGG_TEADap_inh=KEGG_TEADap_inh)
 
 combined_genesets <- list()
 
