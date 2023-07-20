@@ -26,64 +26,52 @@ library(DESeq2)
 library(biomaRt)
 ```
 
-
 # Load featureCount table
 ```{r}
-count_table <- read.table("data/raw_fq_featurecounts_inhibitors_spheroids.txt", header=T)
+count_table <- read.table("data/raw_fq_featurecounts_inhibitors_spheroids.txt", header=T) %>% drop_na()
 
-count_table.2 <- count_table %>% dplyr::select(-2,-3,-4,-5)
+names(count_table) <- gsub("hisat2_aligned\\.|\\.bam", "", names(count_table)) 
 
-names(count_table.2) <- gsub("hisat2_aligned\\.|\\.bam", "", names(count_table.2))
-
-# Extract the numeric part after "S" using regular expression
-numeric_part <- as.numeric(gsub(".*S(\\d+)", "\\1", colnames(count_table.2)[3:10]))
-numeric_part <- numeric_part+2
-numeric_part <- c(1,2, numeric_part)
-
-# Sort the column names and corresponding columns based on the numeric part
-sorted_indices <- order(numeric_part)
-sorted_header_names <- colnames(count_table.2)[sorted_indices]
-sorted_table_inhibitors <- count_table.2[, sorted_indices]
-sorted_table_inhibitors <- sorted_table_inhibitors %>% tibble::column_to_rownames("Geneid") %>% dplyr::select(2:9) 
-print(sorted_header_names)
-print(sorted_table_inhibitors)
+count_table.2 <- count_table  %>% tibble::column_to_rownames("Geneid") %>% dplyr::select(2:9) 
+print(count_table.2)
 ```
 # Design metatables
 ```{r}
-sample_name_inhibitors <- names(sorted_table_inhibitors)
+sample_name_inhibitors <- names(count_table.2)
 replicate_inhibitors <- c(1,2,3,1,2,1,2,3)
 Condition_inhibitors <- c(rep("control",3), rep("TEADap",2), rep("TEADsf",3))
 meta_table_inhibitors <- data.frame(Sample=sample_name_inhibitors, Condition=Condition_inhibitors, Replicate=replicate_inhibitors)
 write.table(meta_table_inhibitors, "results/spheroid_meta_table.txt", sep="\t", quote=F)
 ```
+
 # Export TPM-normalized count table
 ```{r}
 # normalize to TPM
-source("code/00_helper_functions.R") # @ Carlos have to change the nontibble part
-sorted_table_inhibitors_TPM <- normalizeData(x=sorted_table_inhibitors, method = "TPM", len = count_table.2$Length) 
+source("code/00_helper_functions.R")
+count_table_TPM <- normalizeData(x=count_table.2, method = "TPM", len = count_table$Length) 
 
-sorted_table_inhibitors_TPM_mean <- groupTransform(x=sorted_table_inhibitors_TPM, 
+count_table_TPM_mean <- groupTransform_nontibble(x=count_table_TPM, 
                group.lbls = meta_table_inhibitors$Condition,
                FUN=function(x) apply(x, 1, mean)) %>% 
-              tibble::rownames_to_column("ensembl_gene_id")
+               tibble::rownames_to_column("ensembl_gene_id")
 
 # move the rownames to column
-sorted_table_inhibitors_TPM <- sorted_table_inhibitors_TPM %>% 
+count_table_TPM <- count_table_TPM %>% 
               tibble::rownames_to_column("ensembl_gene_id")
 
-# Add the external_gene_names and export the tables.
-mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl", host = "https://oct2022.archive.ensembl.org")
-# use the getAnnotation function to obtain relevant features for ensembl GRCh38.p13.
+# Add the external_gene_names 
+listEnsemblArchives()
+mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl", host="https://oct2022.archive.ensembl.org") #, host = "https://oct2022.archive.ensembl.org"
 annoData <- getBM(attributes=c("ensembl_gene_id","external_gene_name", "description"),mart=mart)
 
-export_TPM_normTables <- list(sorted_table_inhibitors_TPM=sorted_table_inhibitors_TPM, 
-                              sorted_table_inhibitors_TPM_mean=sorted_table_inhibitors_TPM_mean)
+export_TPM_normTables <- list(count_table_TPM=count_table_TPM, 
+                              count_table_TPM_mean=count_table_TPM_mean)
 
-export_TPM_normTables_single <- inner_join(export_TPM_normTables$sorted_table_inhibitors_TPM, y = annoData, by = 'ensembl_gene_id')
-export_TPM_normTables_mean <- inner_join(export_TPM_normTables$sorted_table_inhibitors_TPM_mean, y = annoData, by = 'ensembl_gene_id')
+export_TPM_normTables_single <- inner_join(export_TPM_normTables$count_table_TPM, y = annoData, by = 'ensembl_gene_id')
+export_TPM_normTables_mean <- inner_join(export_TPM_normTables$count_table_TPM_mean, y = annoData, by = 'ensembl_gene_id')
 
-write.table(export_TPM_normTables_single, "results/spheroid_TPM_norm_counts.txt", sep="\t", quote=F, row.names = F)
-write.table(export_TPM_normTables_mean, "results/spheroid_TPM_norm_counts_mean.txt", sep="\t", quote=F, row.names = F)
+write.table(export_TPM_normTables_single, "results/spheroid_TPM_norm_counts_n.txt", sep="\t", quote=F, row.names = F)
+write.table(export_TPM_normTables_mean, "results/spheroid_TPM_norm_counts_mean_n.txt", sep="\t", quote=F, row.names = F)
 ```
 
 # Run DESeq2 function and plot a PCA
