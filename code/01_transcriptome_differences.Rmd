@@ -256,7 +256,7 @@ print(ggplot(GO_list$GO.top8[[i]], aes(x=factor(""), y=factor(Description, level
 # Can remove in final version
 #ggsave(filename = paste0("/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/results/",unique(GO_list$GO.top8[[i]]$GeneSet), ".pdf"), width=15, height=12, units="cm")
 
-write.table(GO_list$GO.results[[i]]@result, paste0("Supplemental_tables/FigS1E_GO_", unique(GO_list$GO.top8[[i]]$GeneSet), ".txt"), sep="\t", quote=F, row.names = F)
+write.table(GO_list$GO.results[[i]]@result, paste0("Supplementary_tables/FigS1E_GO_", unique(GO_list$GO.top8[[i]]$GeneSet), ".txt"), sep="\t", quote=F, row.names = F)
 
  } 
 ```
