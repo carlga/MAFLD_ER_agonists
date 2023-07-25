@@ -14,18 +14,47 @@ path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
 path <- path[-c((length(path)-0):length(path))]
 path <- paste(path, collapse = '/')
 knitr::opts_knit$set(root.dir = path)
-knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'cairo_pdf')
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  size <- 'scriptsize'
+  x <- def.chunk.hook(x, options)
+  paste0("\n \\", size, "\n\n", x, "\n\n \\normalsize")
+})
+
 ```
 
 ```{r}
+# library import
 library(ggplot2)
 library(dplyr)
 ```
 
 ```{r}
-phys_parameters <- read.delim("/Users/christiansom/Documents/GitHub/MAFLD_ER_agonists/data/220923_physio_parameters.txt")
+# color palettes
+colPals <- list()
+colPals$conditions <- setNames(c('#44AA99', '#117733', '#88CCEE', '#332288', '#DDCC77', '#CC6677', '#AA4499', '#882255'),
+                               c('CDf', 'HFDf', 'CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT'))
+colPals$RdBu <- rev(RColorBrewer::brewer.pal(n=11, name = 'RdBu'))
+colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
+                           c('up', 'down'))
+
 ```
+
+
+# Load data
+
+```{r}
+phys_parameters <- read.delim("data/220923_physio_parameters.txt") %>% 
+  dplyr::mutate(group = gsub('_fe','f',group)) %>% 
+  dplyr::mutate(group = gsub('_ma','m',group)) %>% 
+  dplyr::mutate(group = factor(group, levels = names(colPals$conditions)))
+
+```
+
+
 # Calculate means and standard deviations
+
 ```{r}
 phys_para_avg_sd <- phys_parameters %>%
   group_by(group) %>%
@@ -35,19 +64,18 @@ phys_para_avg_sd <- phys_parameters %>%
   mutate(liver_sd = sd(liver)) %>%
   mutate(glucose_sd = sd(glucose)) %>%
   mutate(tot_weight_sd = sd(total_weight))
+
 ```
 
 ```{r}
-order_me <- c("CD_fe", "HFD_fe", "CD_ma", "HFD_ma",  "DPN", "DIP", "E2", "PPT")
-
 # Plot the total weight
 ggplot(phys_para_avg_sd, 
-       aes(x=factor(group,levels=order_me),
+       aes(x=group,
            y = tot_weight_average)) +
   geom_errorbar(aes(ymin=tot_weight_average-tot_weight_sd, 
                     ymax=tot_weight_average+tot_weight_sd), 
                     width = 0.5, color="black") +
-  geom_col(aes(fill=factor(group, levels=order_me)), position= "dodge", color="black") +
+  geom_col(aes(fill=group), position= "dodge", color="black") +
   geom_point(aes(y = total_weight),shape=21,size=4, color="#5a6664", fill="#daf6f1", alpha=0.8) +
   theme_bw() +
   theme_classic()+
@@ -56,22 +84,19 @@ ggplot(phys_para_avg_sd,
         axis.title.y = element_text(size = 15),
         legend.position = "none") +
   scale_y_continuous(limits = c(0, 55)) +
-  scale_x_discrete(labels = c("CDf", "HFDf", "CDm", "HFDm", "DPN", "DIP", "E2", "PPT")) + 
-  scale_fill_manual(values = c("#E88AB5","#B02262","#7F9AD7", "#2A2E72","#7DC7D1",  "#339ACD", "#356FB5", "#2A40AB")) +
+  scale_fill_manual(values = colPals$condition) +
   xlab("") +
   ylab("average total weight in grams")
-
-ggsave("/Users/christiansom/Dropbox/MAFLD_Figure_drafts/Figures/FigureS1/220923_phys_param_totWeight_HFDm4.pdf", height = 15,width = 15, units = "cm")
 
 
 # Plot the liver weight
 ggplot(phys_para_avg_sd, 
-       aes(x=factor(group,levels=order_me),
+       aes(x=group,
            y = liver_average)) +
   geom_errorbar(aes(ymin=liver_average-liver_sd, 
                     ymax=liver_average+liver_sd), 
                     width = 0.5, color="black") +
-  geom_col(aes(fill=factor(group, levels=order_me)), position= "dodge", color="black") +
+  geom_col(aes(fill=group), position= "dodge", color="black") +
   geom_point(aes(y = liver),shape=21,size=4, color="#5a6664", fill="#daf6f1", alpha=0.8) +
   theme_bw() +
   theme_classic()+
@@ -80,21 +105,19 @@ ggplot(phys_para_avg_sd,
         axis.title.y = element_text(size = 15),
         legend.position = "none") +
   scale_y_continuous(limits = c(0, 2.5)) +
-  scale_x_discrete(labels = c("CDf", "HFDf", "CDm", "HFDm", "DPN", "DIP", "E2", "PPT")) + 
-  scale_fill_manual(values = c("#E88AB5","#B02262","#7F9AD7", "#2A2E72","#7DC7D1",  "#339ACD", "#356FB5", "#2A40AB")) +
+  scale_fill_manual(values = colPals$condition) +
   xlab("") +
   ylab("average liver weight in grams")
 
-ggsave("/Users/christiansom/Dropbox/MAFLD_Figure_drafts/Figures/FigureS1/220923_phys_param_liverWeight_HFDm4.pdf", height = 15,width = 15, units = "cm")
 
 # Plot the blood glucose 2h before sacrifice 
 ggplot(phys_para_avg_sd, 
-       aes(x=factor(group,levels=order_me),
+       aes(x=group,
            y = glucose_average)) +
   geom_errorbar(aes(ymin=glucose_average-glucose_sd, 
                     ymax=glucose_average+glucose_sd), 
                     width = 0.5, color="black") +
-  geom_col(aes(fill=factor(group, levels=order_me)), position= "dodge", color="black") +
+  geom_col(aes(fill=group), position= "dodge", color="black") +
   geom_point(aes(y = glucose),shape=21,size=4, color="#5a6664", fill="#daf6f1", alpha=0.8) +
   theme_bw() +
   theme_classic()+
@@ -103,14 +126,15 @@ ggplot(phys_para_avg_sd,
         axis.title.y = element_text(size = 15),
         legend.position = "none") +
   scale_y_continuous(limits = c(0, 13)) +
-  scale_x_discrete(labels = c("CDf", "HFDf", "CDm", "HFDm", "DPN", "DIP", "E2", "PPT")) + 
-  scale_fill_manual(values = c("#E88AB5","#B02262","#7F9AD7", "#2A2E72","#7DC7D1",  "#339ACD", "#356FB5", "#2A40AB")) +
+  scale_fill_manual(values = colPals$condition) +
   xlab("") +
   ylab("average fasting glucose \n(2h) mmol/liter")
 
-ggsave("/Users/christiansom/Dropbox/MAFLD_Figure_drafts/Figures/FigureS1/220923_phys_param_glucose_HFDm4.pdf", height = 15,width = 15, units = "cm")
 ```
+
+
 # Perform statistical tests
+
 ```{r}
 total <- aov(phys_parameters$total_weight ~ phys_parameters$group)
 TukeyHSD(total)
@@ -122,3 +146,10 @@ glucose <- aov(phys_parameters$glucose ~ phys_parameters$group)
 TukeyHSD(glucose)
 ```
 
+
+# SessionInfo
+
+```{r}
+sessionInfo()
+
+```

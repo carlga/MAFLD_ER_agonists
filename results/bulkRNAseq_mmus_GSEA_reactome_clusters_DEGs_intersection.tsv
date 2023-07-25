@@ -1,25 +1,25 @@
 id	cluster	total_genes	total_genes_in_background	non_reverted	reverted	DPN_DIP	E2_PPT
-1	Cell cycle	382	302	3	4	5	6
-2	DNA repair	75	64	6	1	1	0
-3	Lipid metabolism	600	487	24	37	9	19
-4	Mitochondrial respiration	128	109	0	0	1	3
-5	Biological oxidations	186	151	11	18	1	14
-6	Chromatin organization	177	137	0	1	1	1
+1	Vitamin metabolism	157	128	3	5	4	6
+2	Development	374	202	4	6	8	7
+3	Hemostasis	520	351	10	13	10	12
+4	Phagocytosis	77	67	0	2	1	2
+5	Extracellular matrix	247	139	6	7	25	7
+6	Carbohydrate metabolism	207	156	0	4	11	6
 7	GPCR signaling	1560	614	20	29	16	27
-8	Extracellular matrix	247	139	6	7	25	7
-9	Adaptive immune system	563	427	5	3	5	14
-10	Phagocytosis	77	67	0	2	1	2
-11	Complement cascade	48	40	2	3	4	1
-12	Hemostasis	520	351	10	13	10	12
-13	Transport	530	440	8	5	4	13
-14	Translation	332	320	0	0	0	3
-15	Transcription	75	72	0	0	0	0
-16	Development	374	202	4	6	8	7
-17	RNA metabolism	503	487	1	0	0	4
-18	Amino acid metabolism	190	152	6	3	0	8
-19	Carbohydrate metabolism	207	156	0	4	11	6
-20	Nucleotide metabolism	87	75	3	2	2	2
-21	Vitamin metabolism	157	128	3	5	4	6
-22	IGF regulation	116	87	3	2	10	6
-23	Kinase signaling	392	308	2	6	9	11
-24	PI3KAKT regulation	106	72	1	2	2	3
+8	Lipid metabolism	600	487	24	37	9	19
+9	Kinase signaling	392	308	2	6	9	11
+10	PI3KAKT regulation	106	72	1	2	2	3
+11	Nucleotide metabolism	87	75	3	2	2	2
+12	Mitochondrial respiration	128	109	0	0	1	3
+13	Transcription	75	72	0	0	0	0
+14	Cell cycle	382	302	3	4	5	6
+15	Chromatin organization	177	137	0	1	1	1
+16	Amino acid metabolism	190	152	6	3	0	8
+17	IGF regulation	116	87	3	2	10	6
+18	Transport	530	440	8	5	4	13
+19	Translation	332	320	0	0	0	3
+20	DNA repair	75	64	6	1	1	0
+21	Biological oxidations	186	151	11	18	1	14
+22	Complement cascade	48	40	2	3	4	1
+23	RNA metabolism	503	487	1	0	0	4
+24	Adaptive immune system	563	427	5	3	5	14

@@ -15,6 +15,12 @@ path <- path[-c((length(path)-0):length(path))]
 path <- paste(path, collapse = '/')
 knitr::opts_knit$set(root.dir = path)
 knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  size <- 'scriptsize'
+  x <- def.chunk.hook(x, options)
+  paste0("\n \\", size, "\n\n", x, "\n\n \\normalsize")
+})
 
 ```
 
@@ -31,12 +37,12 @@ library(patchwork)
 ```{r}
 # color palettes
 colPals <- list()
-colPals$conditions <- setNames(c('#E98BB6', '#B02262', '#7F9AD7', '#2A2F72', '#7DC7D1', '#339ACD', '#356FB5', '#2B40AB'),
+colPals$conditions <- setNames(c('#44AA99', '#117733', '#88CCEE', '#332288', '#DDCC77', '#CC6677', '#AA4499', '#882255'),
                                c('CDf', 'HFDf', 'CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT'))
 colPals$RdBu <- rev(RColorBrewer::brewer.pal(n=11, name = 'RdBu'))
 colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
                            c('up', 'down'))
-colPals$clusters <- setNames(c('#A9D265', '#82506D', '#FA9F1C', '#676A6E'),
+colPals$clusters <- setNames(c('#E6E6E6', '#B3B3B3', '#8C8C8C', '#4D4D4D'),
                              c('1', '2', '3', '4'))
 colPals$celltypes <- setNames(c('#B4272F', '#E5462D', '#FFD1D1', '#F4E54C', '#FBAA3E', '#AA654E', '#B58B80', '#6D7AA5', 
                                 '#B3177E', '#CAC1DD', '#67227D','#36B449', '#82C349', '#A9D265', '#199478', '#95A3A3', '#C4C5C7'),
@@ -46,6 +52,14 @@ colPals$celltypes <- setNames(c('#B4272F', '#E5462D', '#FFD1D1', '#F4E54C', '#FB
 colPals$inferno <- c('#FCFFA4', '#FCA50A', '#DD513A', '#932667', '#420A68', '#000004')
 
 ```
+
+
+# Note
+
+This script is highly demanding in terms of computational resources. Approximately 50GB
+of single-cell data from the Liver Cell Atlas resource are loaded into memory. Establishing
+cell enrichments of gene signatures with `pagoda2` also requires long computing time. Run
+using `pagoda2` v1.0.2 and `Seurat` v4.0.2 on R version 4.0.5
 
 
 # Load data
@@ -65,15 +79,30 @@ liver_meta <- read.table(
 DEG_sets <- readRDS('results/bulkRNAseq_mmus_DEG_sets.rds')
 pathway_sets <- readRDS('results/bulkRNAseq_mmus_GSEA_reactome_cluster_sets.rds')
 
+# mouse-human orthologs
+mouse_human_orthologs <- read.table(
+  file = 'data/ensembl_mmus_hsap_sep2019_orthologs.tsv',
+  sep = '\t',
+  header = TRUE,
+  quote = '')
+
+# mouse-macaque orthologs
+mouse_macaque_orthologs <- read.table(
+  file = 'data/ensembl_mmus_mfas_sep2019_orthologs.tsv',
+  sep = '\t',
+  header = TRUE,
+  quote = '')
+
 ```
 
 
 # Mouse single-cell map
 
 ```{r}
+# filter for male-only samples and remove HsPCs
 df <- liver$mouseStSt$All@meta.data %>% 
   dplyr::left_join(liver_meta, by = 'sample') %>% 
-  dplyr::filter(gender == 'male' & annot != 'HsPCs') %>% 
+  dplyr::filter(sex == 'male' & annot != 'HsPCs') %>% 
   dplyr::mutate(annot = replace(annot, annot == 'Fibroblasts', 'Stromal cells'))
 
 ggplot(df, aes(x=UMAP_1, y=UMAP_2, color=annot, fill=annot, label=annot)) +
@@ -91,9 +120,11 @@ ggplot(df, aes(x=UMAP_1, y=UMAP_2, color=annot, fill=annot, label=annot)) +
 # Cell type composition
 
 ```{r}
+# filter for male-only samples and remove HsPCs
+# filter for cells from in vivo digestion protocol
 df <- liver$mouseStSt$All@meta.data %>% 
   dplyr::left_join(liver_meta, by = 'sample') %>% 
-  dplyr::filter(gender == 'male' & annot != 'HsPCs') %>% 
+  dplyr::filter(sex == 'male' & annot != 'HsPCs') %>% 
   dplyr::mutate(annot = replace(annot, annot == 'Fibroblasts', 'Stromal cells')) %>% 
   dplyr::filter(digest == 'inVivo') %>% 
   dplyr::group_by(annot) %>% 
@@ -102,7 +133,7 @@ df <- liver$mouseStSt$All@meta.data %>%
 
 df2 <- liver$mouseNAFLD$All@meta.data %>% 
   dplyr::left_join(liver_meta, by = 'sample') %>% 
-  dplyr::filter(gender == 'male' & annot != 'HsPCs') %>% 
+  dplyr::filter(sex == 'male' & annot != 'HsPCs') %>% 
   dplyr::filter(digest == 'inVivo') %>% 
   dplyr::mutate(annot = replace(annot, annot == 'KCs', 'Kupffer cells')) %>% 
   dplyr::mutate(annot = replace(annot, annot == 'Mono/mono-derived cells', 'Monocytes & Monocyte-derived cells')) %>% 
@@ -133,7 +164,7 @@ ggplot(df, aes(x=freq, y=annot, fill=cond, label=freq)) +
 ```
 
 ```{r}
-# Cell type frequency change (%CD - %HFD)
+# cell type frequency change (%CD - %HFD)
 df2 <- df %>% 
   dplyr::select(annot, mouseStSt_minus_NAFLD_freq) %>% 
   dplyr::filter(!duplicated(.)) %>% 
@@ -141,7 +172,7 @@ df2 <- df %>%
 
 ggplot(df2, aes(x=mouseStSt_minus_NAFLD_freq, y=annot, fill=change)) +
   geom_bar(color="black", size=0.5, width=0.8, position="stack", stat="identity") +
-  scale_fill_manual(values = c("#2166AC","#B2182B")) +
+  scale_fill_manual(values = colPals$UpDown) +
   scale_x_continuous(expand = expansion(mult = c(.0, .1)),
                      limit = c(-25, 25),
                      breaks = c(-20, 0, 20)) +
@@ -156,11 +187,12 @@ ggplot(df2, aes(x=mouseStSt_minus_NAFLD_freq, y=annot, fill=change)) +
 
 ```{r, fig.width=12, fig.height=3.5}
 # subsample single-cell data to 5000 cells per cell type for enrichment analysis
+set.seed(22)
 dat <- liver$mouseStSt$All
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
   dplyr::left_join(liver_meta, by = 'sample') %>% 
-  dplyr::filter(gender == 'male' & annot != 'HsPCs') %>% 
+  dplyr::filter(sex == 'male' & annot != 'HsPCs') %>% 
   dplyr::group_by(annot) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
@@ -195,20 +227,28 @@ patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T, guides = 'collect')
 
 ```{r, fig.width=12, fig.height=3.5}
 # subsample single-cell data to 5000 cells per cell type for enrichment analysis
+set.seed(22)
 dat <- liver$human$All
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
   dplyr::left_join(liver_meta, by = 'sample') %>% 
-  dplyr::filter(gender == 'male') %>% 
+  dplyr::filter(sex == 'male') %>% 
   dplyr::group_by(annot) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
 
+DEG_sets_human <- lapply(DEG_sets$gene_id, function(x) {
+  mouse_human_orthologs %>% 
+    dplyr::filter(GeneID_mouse %in% x) %>% 
+    dplyr::pull(GeneSymbol_human) %>% 
+    unique()
+})
+
 res <- getPAS(x = dat, 
-              gene.sets = lapply(DEG_sets$gene_symbols, toupper), 
+              gene.sets = DEG_sets_human, 
               npcs = 100)
 
-p <- lapply(names(DEG_sets$gene_symbols), function(set) {
+p <- lapply(names(DEG_sets_human), function(set) {
   local({
     df <- data.frame(UMAP_1 = res$UMAP_1,
                      UMAP_2 = res$UMAP_2)
@@ -232,20 +272,28 @@ patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T, guides = 'collect')
 
 ```{r, fig.width=12, fig.height=3.5}
 # subsample single-cell data to 5000 cells per cell type for enrichment analysis
+set.seed(22)
 dat <- liver$multisp$monkey
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
   dplyr::left_join(liver_meta, by = 'sample') %>% 
-  dplyr::filter(gender == 'male') %>% 
+  dplyr::filter(sex == 'male') %>% 
   dplyr::group_by(annot) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
 
+DEG_sets_macaque <- lapply(DEG_sets$gene_id, function(x) {
+  mouse_macaque_orthologs %>% 
+    dplyr::filter(GeneID_mouse %in% x) %>% 
+    dplyr::pull(GeneSymbol_macaque) %>% 
+    unique()
+})
+
 res <- getPAS(x = dat, 
-              gene.sets = lapply(DEG_sets$gene_symbols, toupper), 
+              gene.sets = DEG_sets_macaque, 
               npcs = 100)
 
-p <- lapply(names(DEG_sets$gene_symbols), function(set) {
+p <- lapply(names(DEG_sets_macaque), function(set) {
   local({
     df <- data.frame(UMAP_1 = res$UMAP_1,
                      UMAP_2 = res$UMAP_2)
@@ -269,11 +317,12 @@ patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T, guides = 'collect')
 
 ```{r, fig.width=12, fig.height=3.5}
 # subsample single-cell data to 5000 cells per cell type for enrichment analysis
+set.seed(22)
 dat <- liver$mouseStSt$Visium
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
   dplyr::left_join(liver_meta, by = 'sample') %>% 
-  dplyr::filter(gender == 'male') %>% 
+  dplyr::filter(sex == 'male') %>% 
   dplyr::group_by(zonationGroup) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
@@ -308,11 +357,12 @@ patchwork::wrap_plots(p, nrow=1, ncol=4, byrow=T, guides = 'collect')
 
 ```{r, fig.width=12, fig.height=10}
 # subsample single-cell data to 5000 cells per cell type for enrichment analysis
+set.seed(22)
 dat <- liver$mouseStSt$All
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
   dplyr::left_join(liver_meta, by = 'sample') %>% 
-  dplyr::filter(gender == 'male' & annot != 'HsPCs') %>% 
+  dplyr::filter(sex == 'male' & annot != 'HsPCs') %>% 
   dplyr::group_by(annot) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
@@ -354,11 +404,12 @@ patchwork::wrap_plots(p, ncol=5, byrow=T, guides = 'collect')
 
 ```{r, fig.width=12, fig.height=10}
 # subsample single-cell data to 5000 cells per cell type for enrichment analysis
+set.seed(22)
 dat <- liver$mouseNAFLD$All
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
   dplyr::left_join(liver_meta, by = 'sample') %>% 
-  dplyr::filter(gender == 'male' & annot != 'HsPCs') %>% 
+  dplyr::filter(sex == 'male' & annot != 'HsPCs') %>% 
   dplyr::group_by(annot) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
@@ -423,9 +474,11 @@ ggplot(df3, aes(x=annot, y=pathway, size=score, color=score)) +
 # Cell type enrichment change (CD - HFD)
 df4 <- df %>% 
   dplyr::mutate(score = score - df2$score) %>% 
-  dplyr::mutate(size = abs(score))
+  dplyr::mutate(size = abs(score)) %>% 
+  dplyr::mutate(annot = factor(annot, levels = names(colPals$celltypes)),
+                pathway = factor(pathway, levels = rev(names(pathway_sets))))
 
-ggplot(df4, aes(x=annot, y=pathway, size=score, color=score)) +
+ggplot(df4, aes(x=annot, y=pathway, size=size, color=score)) +
   geom_point() +
   scale_color_gradientn(colours = colPals$RdBu) +
   scale_size(range = c(1,8), breaks = c(0,0.5,1), limits = c(0,1))+
@@ -441,11 +494,12 @@ ggplot(df4, aes(x=annot, y=pathway, size=score, color=score)) +
 
 ```{r, fig.width=12, fig.height=10}
 # subsample single-cell data to 5000 cells per cell type for enrichment analysis
+set.seed(22)
 dat <- liver$mouseStSt$Visium
 subs <- dat@meta.data %>% 
   tibble::rownames_to_column(var = 'cellid') %>% 
   dplyr::left_join(liver_meta, by = 'sample') %>% 
-  dplyr::filter(gender == 'male') %>% 
+  dplyr::filter(sex == 'male') %>% 
   dplyr::group_by(zonationGroup) %>% 
   dplyr::slice_sample(n=5000)
 dat <- subset(dat, cells = subs$cellid)
@@ -473,6 +527,8 @@ patchwork::wrap_plots(p, ncol=5, byrow=T, guides = 'collect')
 
 ```
 
+
+# SessionInfo
 
 ```{r}
 sessionInfo()

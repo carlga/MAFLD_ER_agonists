@@ -14,7 +14,13 @@ path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
 path <- path[-c((length(path)-0):length(path))]
 path <- paste(path, collapse = '/')
 knitr::opts_knit$set(root.dir = path)
-knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'cairo_pdf')
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  size <- 'scriptsize'
+  x <- def.chunk.hook(x, options)
+  paste0("\n \\", size, "\n\n", x, "\n\n \\normalsize")
+})
 
 ```
 
@@ -23,6 +29,7 @@ knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
 source('code/00_helper_functions.R')
 library(tidyverse)
 library(Mfuzz)
+library(ggvenn)
 library(ggalluvial)
 library(patchwork)
 library(hypeR)
@@ -35,15 +42,23 @@ library(ggrepel)
 ```{r}
 # color palettes
 colPals <- list()
-colPals$conditions <- setNames(c('#E98BB6', '#B02262', '#7F9AD7', '#2A2F72', '#7DC7D1', '#339ACD', '#356FB5', '#2B40AB'),
+colPals$conditions <- setNames(c('#44AA99', '#117733', '#88CCEE', '#332288', '#DDCC77', '#CC6677', '#AA4499', '#882255'),
                                c('CDf', 'HFDf', 'CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT'))
 colPals$RdBu <- rev(RColorBrewer::brewer.pal(n=11, name = 'RdBu'))
 colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
                            c('up', 'down'))
-colPals$clusters <- setNames(c('#A9D265', '#82506D', '#FA9F1C', '#676A6E'),
+colPals$clusters <- setNames(c('#E6E6E6', '#B3B3B3', '#8C8C8C', '#4D4D4D'),
                              c('1', '2', '3', '4'))
 
 ```
+
+
+# NOTE
+
+> For reproducibility of GO biological process PCA plot in semantic space (fig. 2C) run
+> this code using `org.Mm.eg.db` v3.12.0 with R version 4.0.5. If this version
+> is not used, enriched GO terms will still be the same but the distance between
+> terms and clustering may vary.
 
 
 # Load data
@@ -138,14 +153,48 @@ df <- DEG_clusters$genes %>%
   dplyr::mutate(CLUSTER=factor(CLUSTER, levels = 1:4),
                 condition=factor(condition, levels = c('CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT')))
 
-ggplot(df, aes(x=condition, y=expression, color=CLUSTER, group=geneID)) +
+ggplot(df, aes(x=condition, y=expression, color=CLUSTER, group=geneID, fill=condition)) +
   geom_line(data = subset(df, !grepl('centroid', GeneSymbol)), size = 1,  color=alpha('#AEAEAE', 0.15)) +
-  geom_line(data = subset(df, grepl('centroid', GeneSymbol)), size = 1.2) +
-  geom_point(data = subset(df, grepl('centroid', GeneSymbol)), shape=21, size=3, stroke=1.5, fill='white') +
-  scale_color_manual(values = colPals$clusters) +
+  geom_line(data = subset(df, grepl('centroid', GeneSymbol)), size = 1.2, color='black', linetype='dashed') +
+  geom_point(data = subset(df, grepl('centroid', GeneSymbol)), shape=21, size=3, stroke=1.5, color='black') +
+  scale_fill_manual(values = colPals$conditions) +
   facet_wrap(~CLUSTER, nrow = 1) +
   theme_bw() +
   theme(strip.background = element_blank())
+
+```
+
+
+# Intersection of ER-agonist treatment DEG sets
+
+```{r}
+# upregulated genes
+DEGs_ER_agonist_up <- lapply(DEGs$filt[5:8], function(x){
+  x %>% 
+    dplyr::filter(log2FoldChange>0) %>% 
+    dplyr::pull(ensembl_gene_id)
+})
+names(DEGs_ER_agonist_up) <- c('DPN','DIP','E2','PPT')
+ggvenn::ggvenn(DEGs_ER_agonist_up,
+       columns = c('DPN','DIP','E2','PPT'),
+       fill_color = c('#DDCC77', '#CC6677', '#AA4499', '#882255'),
+       fill_alpha = 0.4,
+       show_percentage = F) +
+  ggtitle('Upregulated')
+
+# downregulated genes
+DEGs_ER_agonist_down <- lapply(DEGs$filt[5:8], function(x){
+  x %>% 
+    dplyr::filter(log2FoldChange<0) %>% 
+    dplyr::pull(ensembl_gene_id)
+})
+names(DEGs_ER_agonist_down) <- c('DPN','DIP','E2','PPT')
+ggvenn::ggvenn(DEGs_ER_agonist_down,
+       columns = c('DPN','DIP','E2','PPT'),
+       fill_color = c('#DDCC77', '#CC6677', '#AA4499', '#882255'),
+       fill_alpha = 0.4,
+       show_percentage = F) +
+  ggtitle('Downregulated')
 
 ```
 
@@ -348,6 +397,35 @@ DEG_sets$gene_symbols <- lapply(DEG_sets$gene_id, function(x) {
 
 ```
 
+```{r}
+# replot updated DEG sets
+# count genes per expression cluster for each set
+comb <- expand.grid(names(DEG_sets$gene_id), seq(1,4))
+comb <- split(comb, 1:nrow(comb))
+
+df <- lapply(comb, function(x) {
+  genes.x <- DEG_sets$gene_id[[x[[1]]]]
+  genes.y <- DEG_clusters$genes %>% 
+    dplyr::filter(CLUSTER==x[[2]]) %>% 
+    dplyr::pull(geneID)
+  
+  data.frame(set=x[[1]],
+             cluster=x[[2]],
+             gene_overlap=dplyr::intersect(genes.x, genes.y) %>% length())
+}) %>% 
+  dplyr::bind_rows() %>% 
+  mutate(cluster=factor(cluster, levels = rev(seq(1,4))))
+
+ggplot(df, aes(x=set, y=gene_overlap, fill=cluster)) +
+  geom_bar(position='fill', stat='identity', color='black', size=0.5) +
+  scale_y_continuous(labels=scales::percent_format()) +
+  scale_fill_manual(values = colPals$clusters) +
+  scale_x_discrete(limits = rev) +
+  coord_flip() +
+  theme_bw()
+
+```
+
 
 # Gene ontology analysis
 
@@ -431,7 +509,7 @@ ggplot(data=df, aes(x=V1, y=V2)) +
                               cols=c('reverted','DPN_DIP'), color='black') + 
   scatterpie::geom_scatterpie_legend(df$size*0.005, x=-0.45, y=-0.4, n=3, labeller=function(x) x*200) +
   ggrepel::geom_text_repel(aes(label = parentTerm), size = 3) +
-  scale_fill_manual(values = alpha(c('#6D7AA5', '#7DC7D1'), 0.8)) +
+  scale_fill_manual(values = alpha(c('#8A94B7', '#DDCC77'), 0.8)) +
   theme_bw()
 
 ```
@@ -490,9 +568,12 @@ ggplot(df, aes(x=cluster, y=term, fill=cluster, size=significance)) +
 
 ```{r}
 saveRDS(DEG_sets, file = 'results/bulkRNAseq_mmus_DEG_sets.rds')
+saveRDS(gobp_enrichment, file = 'results/bulkRNAseq_mmus_DEG_sets_GOBP_enrichment.rds')
 
 ```
 
+
+# SessionInfo
 
 ```{r}
 sessionInfo()

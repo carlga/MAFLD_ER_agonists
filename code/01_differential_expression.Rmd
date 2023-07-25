@@ -14,7 +14,13 @@ path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
 path <- path[-c((length(path)-0):length(path))]
 path <- paste(path, collapse = '/')
 knitr::opts_knit$set(root.dir = path)
-knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'cairo_pdf')
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  size <- 'scriptsize'
+  x <- def.chunk.hook(x, options)
+  paste0("\n \\", size, "\n\n", x, "\n\n \\normalsize")
+})
 
 ```
 
@@ -163,6 +169,8 @@ saveRDS(DEGs, file = 'results/bulkRNAseq_mmus_DEGs.rds')
 
 ```
 
+
+# SessionInfo
 
 ```{r}
 sessionInfo()

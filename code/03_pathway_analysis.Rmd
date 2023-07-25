@@ -14,9 +14,16 @@ path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
 path <- path[-c((length(path)-0):length(path))]
 path <- paste(path, collapse = '/')
 knitr::opts_knit$set(root.dir = path)
-knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'cairo_pdf')
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  size <- 'scriptsize'
+  x <- def.chunk.hook(x, options)
+  paste0("\n \\", size, "\n\n", x, "\n\n \\normalsize")
+})
 
 ```
+
 
 ```{r}
 # source and library import
@@ -29,12 +36,12 @@ library(fgsea)
 ```{r}
 # color palettes
 colPals <- list()
-colPals$conditions <- setNames(c('#E98BB6', '#B02262', '#7F9AD7', '#2A2F72', '#7DC7D1', '#339ACD', '#356FB5', '#2B40AB'),
+colPals$conditions <- setNames(c('#44AA99', '#117733', '#88CCEE', '#332288', '#DDCC77', '#CC6677', '#AA4499', '#882255'),
                                c('CDf', 'HFDf', 'CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT'))
 colPals$RdBu <- rev(RColorBrewer::brewer.pal(n=11, name = 'RdBu'))
 colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
                            c('up', 'down'))
-colPals$clusters <- setNames(c('#A9D265', '#82506D', '#FA9F1C', '#676A6E'),
+colPals$clusters <- setNames(c('#E6E6E6', '#B3B3B3', '#8C8C8C', '#4D4D4D'),
                              c('1', '2', '3', '4'))
 
 ```
@@ -122,6 +129,19 @@ gsea_net_clusters <- read.table(
   header = TRUE,
   quote = '')
 
+cluster_order <- setNames(seq(1,24),
+                          nm = c('Vitamin metabolism', 'Development', 'Hemostasis', 'Phagocytosis', 
+                                 'Extracellular matrix', 'Carbohydrate metabolism', 'GPCR signaling', 
+                                 'Lipid metabolism', 'Kinase signaling', 'PI3KAKT regulation', 
+                                 'Nucleotide metabolism', 'Mitochondrial respiration', 'Transcription', 
+                                 'Cell cycle', 'Chromatin organization', 'Amino acid metabolism', 
+                                 'IGF regulation', 'Transport', 'Translation', 'DNA repair', 
+                                 'Biological oxidations', 'Complement cascade', 'RNA metabolism', 
+                                 'Adaptive immune system'))
+
+gsea_net_clusters <- gsea_net_clusters %>% 
+  dplyr::mutate(cl_num = dplyr::recode(cl_label, !!!cluster_order))
+
 # load nodes for reproducibility
 nodes <- read.table(
   file = 'results/bulkRNAseq_mmus_GSEA_reactome_network_nodes.tsv',
@@ -137,7 +157,7 @@ gsea_net_reduced <- list()
 gsea_net_reduced$nodes <- gsea_net_clusters %>% 
   dplyr::inner_join(nodes, by = 'id') %>% 
   dplyr::group_by(cl_label) %>% 
-  dplyr::summarise(cluster = glayCluster,
+  dplyr::summarise(cluster = cl_num,
                    id = cl_label,
                    n = dplyr::n(),
                    CDmVsHFDm_NES = mean(CDmVsHFDm_NES),
@@ -244,6 +264,8 @@ DEGs_pathway_distr <- lapply(seq(1:length(pathway_sets)), function(i) {
 
 ```
 
+
+# SessionInfo
 
 ```{r}
 sessionInfo()

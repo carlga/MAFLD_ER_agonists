@@ -1,7 +1,6 @@
-
 ---
 title: 'Hepatoprotective effects of systemic ER activation'
-subtitle: 'Spheroid RNA-seq - Differential expression analysis'
+subtitle: 'Spheroid RNA-seq - Downstream analysis'
 author: 'Christian Sommerauer & Carlos Gallardo'
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -15,32 +14,93 @@ path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
 path <- path[-c((length(path)-0):length(path))]
 path <- paste(path, collapse = '/')
 knitr::opts_knit$set(root.dir = path)
-knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'cairo_pdf')
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  size <- 'scriptsize'
+  x <- def.chunk.hook(x, options)
+  paste0("\n \\", size, "\n\n", x, "\n\n \\normalsize")
+})
 
 ```
 
-# Load packages
 ```{r}
+# source and library import
+source('code/00_helper_functions.R')
 library(clusterProfiler)
 library(tidyverse)
 library(org.Hs.eg.db)
-library(fgsea)
+library(Mfuzz)
+library(biomaRt)
+library(GenomicRanges)
+library(ComplexHeatmap)
+
 ```
 
-# Load RDS files
 ```{r}
+# color palettes
+colPals <- list()
+colPals$RdBu <- rev(RColorBrewer::brewer.pal(n=11, name = 'RdBu'))
+colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
+                           c('up', 'down'))
+
+```
+
+
+# Load data
+
+```{r}
+# spheroid TPM-normalized expression
+spheroid_tpm <- read.table(
+  file = 'results/spheroid_TPM_norm_counts.txt',
+  sep = '\t',
+  header = T,
+  quote = ''
+)
+# spherioid differential expression results
 inhibitor_RDS <- readRDS("results/Spheroid_inhibitors_DEGlists.rds")
 
 universe <- inhibitor_RDS$unfilt$TEADap_vs_control %>% pull("external_gene_name")
 
 TEADap_inh_vs_control <- inhibitor_RDS$filt$TEADap_vs_control
 TEADsf_inh_vs_control <- inhibitor_RDS$filt$TEADsf_vs_control
+
+# human gene promoter regions (ensembl 109)
+promoter_regions <- read.table(
+  file = "data/ensembl_hsap_feb2023_promoter_regions.bed",
+  sep = "\t",
+  quote = "",
+  header = F)
+colnames(promoter_regions) <- c(
+  'chromosome', 'promoter_start', 'promoter_end', 'ensembl_gene_id', 
+  'external_gene_name', 'ensembl_transcript_id', 'strand', 'gene_biotype', 'description')
+
+# TEAD1 binding sites geneome-wide (HOCOMOCOv11 + PWMScan)
+tead1_tfbs <- read.table(
+  file = "data/TEAD1_tfbs_hg38_hocomoco_v11_pwmscan.bed",
+  sep = "\t",
+  quote = "",
+  header = F)
+colnames(tead1_tfbs) <- c('chromosome', 'start', 'end', 'sequence', 'score', 'strand')
+
+# mouse-human orthologs (ensembl 105)
+mouse_human_orthologs <- read.table(
+  file = 'data/ensembl_mmus_hsap_dec2021_orthologs.tsv',
+  sep = '\t',
+  header = TRUE,
+  quote = '')
+
+# mouse differentially expressed genes
+DEGs_mouse <- readRDS('results/bulkRNAseq_mmus_DEGs.rds')
+
 ```
+
+
+# KEGG over-representation analysis
 
 ```{r}
 TEADap_inh_vs_control_entrez <- bitr(TEADap_inh_vs_control$ensembl_gene_id, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = "org.Hs.eg.db")
 TEADsf_inh_vs_control_entrez <- bitr(TEADsf_inh_vs_control$ensembl_gene_id, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = "org.Hs.eg.db")
-
 
 KEGG_TEADap_inh <- enrichKEGG(gene = TEADap_inh_vs_control_entrez$ENTREZID,
           organism = "hsa",
@@ -48,7 +108,7 @@ KEGG_TEADap_inh <- enrichKEGG(gene = TEADap_inh_vs_control_entrez$ENTREZID,
           pAdjustMethod = "BH",
           qvalueCutoff = 0.05)
 KEGG_TEADap_inh <- as.data.frame(KEGG_TEADap_inh@result)
-#write.table(KEGG_TEADap_inh, "data/KEGG_TEADap_vs_control_FigS8A.txt", sep="\t", quote=F, row.names = F)
+#write.table(KEGG_TEADap_inh, "results/KEGG_TEADap_vs_control_FigS8A.txt", sep="\t", quote=F, row.names = F)
 
 KEGG_TEADsf_inh <- enrichKEGG(gene = TEADsf_inh_vs_control_entrez$ENTREZID,
           organism = "hsa",
@@ -74,12 +134,15 @@ for (i in KEGG_TEADap_inh$Description[1:12]) {
   KEGG_top12_pathway_geneList[[i]] <- gimme_SYMBOL_from_KEGG(table=KEGG_TEADap_inh, pathway=i)
 }
 
-#saveRDS(KEGG_top12_pathway_geneList, "data/top12KEGGpathways_gene_content.rds")
+#saveRDS(KEGG_top12_pathway_geneList, "results/top12KEGGpathways_gene_content.rds")
 ```
-# Plotting the KEGG pathways
+
+
+## Plotting the KEGG pathways
+
 ```{r}
 # Import the KEGG table (run in June 2023, KEGG version from April)
-KEGG_TEADap_inh <- read.delim("data/KEGG_TEADap_vs_control_FigS8A.txt")
+KEGG_TEADap_inh <- read.delim("results/KEGG_TEADap_vs_control_FigS8A.txt")
 
 # Note: This following section is looped, so one can technically plot many results at once.
 list_KEGG <- list(KEGG_TEADap_inh=KEGG_TEADap_inh)
@@ -118,9 +181,10 @@ print(ggplot_bar)
 
 ```
 
+
 # Gene expression trend analysis
+
 ```{r}
-library(Mfuzz)
 # CLUSTERING WITH ONLY Inhibitors DEG
 
 # Clustering of expression profiles
@@ -138,8 +202,6 @@ nonNorm_Counts <- read.delim("results/spheroid_TPM_norm_counts_mean.txt")
 TPM_Normalized <- nonNorm_Counts %>% tibble::column_to_rownames("ensembl_gene_id") %>% 
   dplyr::select(-description, -external_gene_name)
 colSums(TPM_Normalized) 
- 
-source("code/00_helper_functions.R")
 
 eset <- TPM_Normalized %>% 
   dplyr::filter(row.names(.) %in% DEGs_union)
@@ -153,6 +215,7 @@ m_eset <- Mfuzz::mestimate(eset)
 
 # determine cluster number with minimum centroid distance
 Mfuzz::Dmin(eset, m = m_eset, crange = seq(2,20,1), repeats = 5)
+
 ```
 
 ```{r}
@@ -163,6 +226,7 @@ clusters <- mfuzz(eset, c = 2, m = m_eset)
 
 # check correlation of cluster centroids
 cor(t(clusters[[1]]))
+
 ```
 
 ```{r}
@@ -179,6 +243,7 @@ cluster_memberships <- do.call(rbind,
 # check number of genes per cluster
 cluster_gene_counts <- table(cluster_memberships$CLUSTER)
 cluster_gene_counts
+
 ```
 
 ```{r}
@@ -224,8 +289,265 @@ ggplot(df, aes(x=condition, y=expression, color=CLUSTER, group=geneID)) +
 
 #ggsave("cMeans_clustering_inhibitors_2clusters.pdf", width = 23, height=10, units="cm")
 #write.table(DEG_clusters$genes, "cMeans_clustering_inhibitors_2clusters.txt", sep="\t", row.names = F, quote = F)
+
 ```
+
+# Gene expression fold change in key pathways (TEADap vs control)
+
+```{r, fig.width=10, fig.height=4}
+
+pathway_genes <- list(
+  glycerolipid_metabolism = c('GPAM','PNPLA3','DGKD','AGPAT2','AKR1B10','ALDH1B1','TKFC'),
+  fatty_acid_biosynthesis = c('FASN','ACACA','SCD'),
+  PI3K_AKT_signaling = c('ITGA2','DDIT4','LAMB1','PDGFRA','LAMC2','ITGB6','THBS1',
+                         'EPHA2','FOXO3','CCND1','GHR','IRS2','IRS1','JAK2','MCL1',
+                         'NR4A1','IGF2','FGFR3','MYC','TNXB','CDK6','LAMA5','G6PC1'),
+  glucagon_signaling = c('EP300','ACACA','ACACB','CREBBP','SIK2','GCGR','G6PC1','GCK','SIRT1'),
+  AMPK_signaling = c('FOXO3','ADRA1A','ACACA','PPARGC1A','FASN','ACACB','G6PC1',
+                     'PFKFB3','HMGCR','IRS2','SIRT1','CCND1','SREBF1'),
+  chol_and_BA_metabolism = c('HMGCR','LCAT','LDLR','APOA4','LRP1','ANGPTL8','PCSK9','CYP7A1',
+                                           'VDAC2','ABCB11','SLC22A7','ADCY1','ADCY9','SLC9A1','SLC27A5')
+)
+
+df <- lapply(names(pathway_genes), function(x){
+  inhibitor_RDS$unfilt$TEADap_vs_control %>% 
+    filter(external_gene_name %in% pathway_genes[[x]]) %>% 
+    mutate(pathway = x,
+           external_gene_name = factor(external_gene_name, levels=pathway_genes[[x]])) %>% 
+    dplyr::select(pathway, external_gene_name, log2FoldChange) %>% 
+    arrange(external_gene_name)
+}) %>% bind_rows()
+
+ggplot(df, aes(x=external_gene_name, y=pathway, fill=log2FoldChange)) +
+  geom_point(shape=21, size=4, stroke=1) +
+  scale_fill_gradientn(colours = colPals$RdBu, limits=c(-2.2,2.2)) +
+  theme_void(base_size = 8) +
+  theme(axis.text = element_text(face = 'bold.italic'),
+        axis.text.x=element_text(angle=60, hjust=0.9, vjust=0.9))
+
+```
+
+
+# Promoter binding sites
+
+```{r}
+# promoter regions 
+promoters_gr <- with(promoter_regions, GRanges(chromosome, IRanges(promoter_start, promoter_end), strand = strand))
+
+# binding site regions 
+tead1_tfbs_gr <- with(tead1_tfbs, GRanges(chromosome, IRanges(start, end), strand = strand))
+
+# overlap analysis ignoring strand information
+overlap <- countOverlaps(promoters_gr, tead1_tfbs_gr, ignore.strand = TRUE)
+
+# add the counts to the promoter data frame (promoter with max. binding sites per gene selected)
+promoter_tead1_overlap <- promoter_regions %>% 
+  mutate(tead1_bs = overlap) %>% 
+  group_by(ensembl_gene_id) %>% 
+  slice_max(tead1_bs, with_ties = F)
+
+# separate promoters by TEADap inhibitor DEGs and non-DEGs
+df <- promoter_tead1_overlap %>% 
+  dplyr::select(ensembl_gene_id, external_gene_name, gene_biotype, description, tead1_bs) %>% 
+  mutate(type = ifelse(ensembl_gene_id %in% TEADap_inh_vs_control$ensembl_gene_id, 'DEGs', 'Non-DEGs'))
+
+# get random background sets for permutation test
+# set.seed(23)
+non_DEG_set <- df %>% dplyr::filter(type=='Non-DEGs') %>% pull(ensembl_gene_id) %>% unique()
+DEG_set <- df %>% dplyr::filter(type=='DEGs') %>% pull(ensembl_gene_id) %>% unique()
+# random_genes <- lapply(seq(1,1000), function(x) sample(x = non_DEG_set, size = length(DEG_set)))
+# saveRDS(random_genes, file = 'results/spheroid_TEADap_random_promoter_sets.rds')
+random_genes <- readRDS(file = 'results/spheroid_TEADap_random_promoter_sets.rds')
+
+# TEAD1 binding sites in DEGs vs non-DEG sets
+non_DEG_bs <- lapply(random_genes, function(x){
+  df %>%
+    dplyr::filter(ensembl_gene_id %in% x) %>% 
+    pull(tead1_bs) %>% 
+    mean()
+}) %>% unlist() %>% as.data.frame() %>% rename('.' = 'avg_bs')
+
+DEG_bs <- df %>%
+    dplyr::filter(ensembl_gene_id %in% DEG_set) %>% 
+    pull(tead1_bs) %>% 
+    mean()
+
+print('Average binding sites in non-DEG sets:')
+summary(non_DEG_bs)
+paste('Average binding sites in TEADap inhibitor DEG set:', DEG_bs)
+
+```
+
+```{r, fig.width=4, fig.height=4}
+pval <- tailFraction(DEG_bs, non_DEG_bs$avg_bs, tail = 'right')
+
+ggplot(non_DEG_bs, aes(x = avg_bs)) +
+  geom_density(lwd = 1, colour = 'black',
+               fill = '#616161', alpha = 1) +
+  geom_vline(xintercept = DEG_bs, lwd = 1.5) +
+  scale_x_continuous(limits = c(0,0.5),
+                     breaks = c(0,0.25,0.5),
+                     expand = expansion(mult = c(.02, .02))) +
+  scale_y_continuous(expand = expansion(mult = c(.02, .1))) +
+  annotate("text",  x=Inf, y = Inf, label = paste('P =',pval), vjust=1.5, hjust=1.2, size=5) +
+  xlab('# of TEAD1 binding sites') +
+  ylab('Density') +
+  theme_bw(base_size = 12)
+
+```
+
+
+# Expression heatmap top 12 KEGG pathways
+
+```{r, fig.height=12, fig.width=6}
+top12_kegg <- readRDS('results/top12KEGGpathways_gene_content.rds')
+
+df <- dplyr::bind_rows(top12_kegg) %>% 
+  dplyr::rename(external_gene_name = SYMBOL) %>% 
+  dplyr::inner_join(spheroid_tpm, by = 'external_gene_name') %>% 
+  dplyr::mutate(external_gene_name_unique = uniquify(external_gene_name, sep='_'))
+
+mouse_human_orthologs <- mouse_human_orthologs %>% 
+  dplyr::filter(!GeneSymbol_human == '') %>% 
+  dplyr::filter(!GeneSymbol_mouse == '')
+
+selected_orthologs <- df %>% 
+  dplyr::select(external_gene_name) %>% 
+  dplyr::filter(!duplicated(external_gene_name)) %>% 
+  dplyr::mutate(external_gene_name_mouse = dplyr::recode(external_gene_name,
+                                                         !!!setNames(mouse_human_orthologs$GeneSymbol_mouse,
+                                                                     mouse_human_orthologs$GeneSymbol_human)))
+
+mouse_ERtreatmentvsHFDm <- lapply(names(DEGs_mouse$unfilt[5:8]), function(x){
+  DEGs_mouse$unfilt[[x]] %>% 
+    dplyr::select(external_gene_name, log2FoldChange) %>% 
+    dplyr::rename(!!x := log2FoldChange)
+}) %>% dplyr::bind_cols() %>% 
+  dplyr::select(-paste('external_gene_name', seq(3,7,2), sep='...')) %>% 
+  dplyr::rename(external_gene_name = 'external_gene_name...1') %>% 
+  dplyr::filter(external_gene_name %in% selected_orthologs$external_gene_name_mouse) %>% 
+  dplyr::mutate(external_gene_name =dplyr::recode(external_gene_name,
+                                                  !!!setNames(mouse_human_orthologs$GeneSymbol_human,
+                                                              mouse_human_orthologs$GeneSymbol_mouse)))
+
+df <- df %>% 
+  left_join(mouse_ERtreatmentvsHFDm, by = 'external_gene_name')
+
+m <- df %>% 
+  tibble::column_to_rownames(var = 'external_gene_name_unique') %>% 
+  dplyr::select(FFA.control.1_S10:TEADsf.inh.3_S18) %>% 
+  scaleData(method = 'zscore') %>% 
+  dplyr::bind_cols(dplyr::select(df, DPNVsHFDm:PPTVsHFDm))
+  
+
+p <- Heatmap(m, width = unit(40, "mm"), height = unit(260, "mm"),
+             row_split = factor(df$Pathway, levels = unique(df$Pathway)),
+             column_split = c(rep(1,8), rep(2,4)),
+             col = circlize::colorRamp2(breaks=seq(-2, 2, length.out=11),
+                                        colors=colPals$RdBu),
+             na_col = "grey80",
+             row_title = unique(df$Pathway),
+             row_title_gp = grid::gpar(fontsize = 6),
+             row_labels = setNames(df$external_gene_name, df$external_gene_name_unique)[rownames(m)],
+             row_names_gp = grid::gpar(fontsize = 6),
+             column_names_gp = grid::gpar(fontsize = 6),
+             cluster_row_slices = FALSE,
+             cluster_column_slices = FALSE,
+             border = T,
+             gap = unit(1, 'mm'),
+             row_dend_width = unit(5, 'mm'),
+             column_dend_height = unit(5, 'mm')) 
+
+draw(p)
+
+```
+
+
+# KEGG pathway genes changed by TEAD1i and ER activation
+
+```{r}
+# entrez ID to ensembl ID matching
+ann_genes <- getBM(
+  mart=useDataset("hsapiens_gene_ensembl", useEnsembl(biomart = "ENSEMBL_MART_ENSEMBL", version = 109)),
+  attributes=c("ensembl_gene_id", "entrezgene_id", "external_gene_name")) %>% 
+  filter(!is.na(entrezgene_id)) %>% 
+  filter(!external_gene_name == '')
+
+# KEGG pathway genes
+top12KEGG_all <- read.table(
+  file = 'data/KEGG_pathways_april2023.txt',
+  sep = '\t',
+  header = TRUE,
+  quote = '') %>% 
+  filter(KEGG_pathway_identifier %in% c("hsa04979", "hsa04152", "hsa04936", "hsa00561", 
+                                        "hsa01522", "hsa04922", "hsa04512", "hsa04976", 
+                                        "hsa04931", "hsa05219", "hsa04934", "hsa04151")) %>% 
+  filter(!duplicated(KEGG_ID)) %>% 
+  mutate(ensembl_gene_id = recode(KEGG_ID, !!!setNames(ann_genes$ensembl_gene_id,
+                                                       ann_genes$entrezgene_id))) %>% 
+  mutate(GeneID_human = ensembl_gene_id) %>% 
+  inner_join(mouse_human_orthologs, by = 'GeneID_human') %>% 
+  filter(!(duplicated(GeneSymbol_human) | duplicated(GeneSymbol_human, fromLast = TRUE)))
+
+top12_kegg <- readRDS('results/top12KEGGpathways_gene_content.rds')
+top12_kegg_TEADap_inh_DEGs <- TEADap_inh_vs_control %>% 
+  filter(ensembl_gene_id %in% top12KEGG_all$ensembl_gene_id) %>% 
+  mutate(GeneID_human = ensembl_gene_id) %>% 
+  inner_join(mouse_human_orthologs, by = 'GeneID_human') %>% 
+  filter(!(duplicated(GeneSymbol_human) | duplicated(GeneSymbol_human, fromLast = TRUE)))
+
+ER_activation_DEGs <- bind_rows(DEGs_mouse$filt[5:8]) %>% 
+  filter(!duplicated(ensembl_gene_id)) %>% 
+  mutate(GeneID_mouse = ensembl_gene_id) %>% 
+  inner_join(mouse_human_orthologs, by = 'GeneID_mouse') %>% 
+  filter(!(duplicated(GeneSymbol_mouse) | duplicated(GeneSymbol_mouse, fromLast = TRUE))) %>% 
+  filter(GeneID_human %in% top12KEGG_all$ensembl_gene_id)
+
+top12KEGG_all_nonTEAD1i_DEGs <- top12KEGG_all %>% 
+  filter(!GeneSymbol_human %in% top12_kegg_TEADap_inh_DEGs$GeneSymbol_human)
+
+# random_genes <- lapply(seq(1,1000), function(x) sample(x = top12KEGG_all_nonTEAD1i_DEGs$GeneSymbol_human, size = length(top12_kegg_TEADap_inh_DEGs$GeneSymbol_human)))
+# saveRDS(random_genes, file = 'results/random_top12KEGG_nonTEADap_inh_sets.rds')
+random_genes <- readRDS(file = 'results/random_top12KEGG_nonTEADap_inh_sets.rds')
+
+# TEADap inhibitor DEG and non-DEG overlaps for genes in top 12 KEGG pathways that are are also
+# changed by ER-agonist treatments in mouse HFD models
+top12KEGG_nonTEADap_inh_DEG_ER_overlap <- lapply(random_genes, function(x){
+  length(intersect(x, ER_activation_DEGs$GeneSymbol_human))/length(x)*100
+}) %>% unlist() %>% as.data.frame() %>% dplyr::rename('perc_ER_activ' = '.')
+
+top12KEGG_TEADap_inh_DEG_ER_overlap <- length(intersect(top12_kegg_TEADap_inh_DEGs$GeneSymbol_human, ER_activation_DEGs$GeneSymbol_human))/length(top12_kegg_TEADap_inh_DEGs$GeneSymbol_human)*100
+
+print('Overlap for non-TEADap inhibitor DEG sets:')
+summary(top12KEGG_nonTEADap_inh_DEG_ER_overlap)
+paste('Overlap for TEADap inhibitor DEG set:', top12KEGG_TEADap_inh_DEG_ER_overlap)
+
+```
+
+```{r, fig.width=6, fig.height=3}
+pval <- tailFraction(top12KEGG_TEADap_inh_DEG_ER_overlap, 
+                     top12KEGG_nonTEADap_inh_DEG_ER_overlap$perc_ER_activ, 
+                     tail = 'right')
+
+ggplot(top12KEGG_nonTEADap_inh_DEG_ER_overlap, aes(x = perc_ER_activ)) +
+  geom_density(lwd = 1, colour = 'black',
+               fill = '#616161', alpha = 1) +
+  geom_vline(xintercept = top12KEGG_TEADap_inh_DEG_ER_overlap, lwd = 1.5) +
+  scale_x_continuous(limits = c(0,30),
+                     breaks = c(0,10,20,30),
+                     expand = expansion(mult = c(.1, .1))) +
+  scale_y_continuous(expand = expansion(mult = c(.01, .12))) +
+  annotate("text",  x=Inf, y = Inf, label = paste('P =',pval), vjust=1.5, hjust=1.2, size=5) +
+  xlab('Overlap with genes deregulated upon ER activation (%)') +
+  ylab('Density') +
+  theme_bw(base_size = 12)
+
+```
+
+
+# SessionInfo
 
 ```{r}
 sessionInfo()
+
 ```

@@ -14,17 +14,25 @@ path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
 path <- path[-c((length(path)-0):length(path))]
 path <- paste(path, collapse = '/')
 knitr::opts_knit$set(root.dir = path)
-knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'cairo_pdf')
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  size <- 'scriptsize'
+  x <- def.chunk.hook(x, options)
+  paste0("\n \\", size, "\n\n", x, "\n\n \\normalsize")
+})
 
 ```
 
 ```{r}
-getwd()
 library(tidyverse)
 source("code/00_helper_functions.R")
+
 ```
 
+
 # AML12 lipid droplet quantification, Figure 5C
+
 ```{r}
 aml12_t1 <- read.delim("data/LD_quant_aml12_trial1.txt")
 aml12_t1_grp <- aml12_t1 %>% group_by(condition)  %>% dplyr::select(2:7) %>% mutate(Trial = "Trial1")
@@ -80,6 +88,7 @@ t.test(combined_t1_t2_norm$LD_per_cell_norm ~ combined_t1_t2_norm$condition) # p
 
 
 # Seahorse, Figure 5D
+
 ```{r}
 
 data <- read.delim("data/siTEAD1_Seahorse")
@@ -106,7 +115,10 @@ t.test( data.grouped.oligo$Value ~ data.grouped.oligo$Condition)
 t.test( data.grouped.FCCP$Value ~ data.grouped.FCCP$Condition) 
 
 ```
+
+
 # PHH spheroid lipid quantification, Figure 5E
+
 ```{r}
 inhibitors_adipored <- read.csv("data/TEAD_inhibitors_adipored.csv")
 
@@ -128,5 +140,13 @@ inhibitors_TEADsf <- inhibitors_adipored %>% filter(!inhibitor=="TEADap")
 
 t.test(inhibitors_TEADap$value ~ inhibitors_TEADap$inhibitor)
 t.test(inhibitors_TEADsf$value ~ inhibitors_TEADsf$inhibitor)
+
 ```
 
+
+# SessionInfo
+
+```{r}
+sessionInfo()
+
+```

@@ -8,3 +8,6 @@ CK07*narrowPeak
 Intermediate_*
 *.log
 results/.Rapp.history
+*exports.Rmd
+tables
+Supplementary_tables

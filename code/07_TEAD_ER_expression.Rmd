@@ -1,0 +1,480 @@
+---
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'TEAD & ER expression in the liver'
+author: 'Christian Sommerauer & Carlos Gallardo'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-0):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'cairo_pdf')
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  size <- 'scriptsize'
+  x <- def.chunk.hook(x, options)
+  paste0("\n \\", size, "\n\n", x, "\n\n \\normalsize")
+})
+
+```
+
+```{r}
+# source and library import
+source('code/00_helper_functions.R')
+library(tidyverse)
+library(Seurat)
+
+```
+
+```{r}
+# color palettes
+colPals <- list()
+colPals$conditions <- setNames(c('#44AA99', '#117733', '#88CCEE', '#332288', '#DDCC77', '#CC6677', '#AA4499', '#882255'),
+                               c('CDf', 'HFDf', 'CDm', 'HFDm', 'DPN', 'DIP', 'E2', 'PPT'))
+colPals$RdBu <- rev(RColorBrewer::brewer.pal(n=11, name = 'RdBu'))
+colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
+                           c('up', 'down'))
+colPals$celltypes <- setNames(c('#B4272F', '#E5462D', '#FFD1D1', '#F4E54C', '#FBAA3E', '#AA654E', '#B58B80', '#6D7AA5', 
+                                '#B3177E', '#CAC1DD', '#67227D','#36B449', '#82C349', '#A9D265', '#199478', '#95A3A3', '#C4C5C7'),
+                              c('Cholangiocytes', 'Endothelial cells', 'HsPCs', 'Stromal cells', 'Hepatocytes', 
+                                'Kupffer cells', 'Monocytes & Monocyte-derived cells', 'T cells', 'NK cells', 
+                                'ILC1s', 'B cells', 'cDC1s', 'cDC2s', 'Mig. cDCs', 'pDCs', 'Basophils', 'Neutrophils'))
+
+```
+
+
+# Load data
+
+```{r}
+# mouse bulk RNAseq data
+mouse_RNAseq <- list()
+# raw counts RNAseq
+mouse_RNAseq$raw_counts <- read.table(
+  file = 'data/bulkRNAseq_mmus_rawcounts.tsv',
+  stringsAsFactors = FALSE,
+  sep = '\t',
+  header = TRUE) %>%
+  tibble::column_to_rownames('geneID') %>% 
+  dplyr::select(-PPT_HFD_male_4)
+# gene lengths
+mouse_RNAseq$gene_len <- read.table(
+  file = 'data/bulkRNAseq_mmus_gene_lengths.tsv',
+  stringsAsFactors = FALSE,
+  sep = '\t',
+  header = TRUE)
+# design RNAseq
+mouse_RNAseq$design_meta <- read.table(
+  file = 'data/bulkRNAseq_mmus_design.tsv',
+  stringsAsFactors = FALSE,
+  sep = '\t',
+  header = TRUE) %>% 
+  dplyr::filter(sample != 'PPT_HFD_male_4')
+# ensembl gene annotation (Mus musculus)
+mouse_RNAseq$gene_ann <- read.table(
+  file = 'data/ensembl_mmus_sep2019_annotation.tsv',
+  stringsAsFactors = FALSE,
+  sep = '\t',
+  header = TRUE,
+  fill = FALSE,
+  quote = '') %>% 
+  dplyr::filter(ensembl_gene_id %in% rownames(mouse_RNAseq$raw_counts)) %>% 
+  dplyr::arrange(factor(ensembl_gene_id, levels = rownames(mouse_RNAseq$raw_counts))) %>% 
+  dplyr::rename(geneID = ensembl_gene_id) %>% 
+  dplyr::left_join(mouse_RNAseq$gene_len, by = 'geneID')
+# TPM-normalized counts
+mouse_RNAseq$tpm <- mouse_RNAseq$raw_counts %>% 
+  normalizeData(len = mouse_RNAseq$gene_ann$length, method = 'TPM')
+
+# human gene annotation
+human_gene_ann <- read.table(
+  file = 'data/ensembl_hsap_dec2021_annotation.tsv',
+  sep = '\t',
+  header = TRUE,
+  quote = '')
+
+# NAFLD patient cohort
+cohort_data <- readRDS("data/bulkRNAseq_human_cohort_data.rds")
+
+cohort_data$Govaere$cpm_filt <- cohort_data$Govaere$cpm %>%
+  tibble::rownames_to_column(var = 'gene') %>%
+  dplyr::filter(gene %in% human_gene_ann$ensembl_gene_id) %>%
+  dplyr::mutate(gene = dplyr::recode(gene, !!!setNames(human_gene_ann$external_gene_name,
+                                                       human_gene_ann$ensembl_gene_id))) %>%
+  dplyr::filter(!duplicated(gene) & gene != "") %>%
+  tibble::column_to_rownames(var = 'gene')
+
+# Liver Cell Atlas data from Guilliams et al. 2022 (https://www.livercellatlas.org/download.php)
+liver <- readRDS(file = 'data/livercellatlas_feb2022.rds')
+
+# Liver Cell Atlas sample metadata
+liver_meta <- read.table(
+  file = 'data/livercellatlas_feb2022_sample_annotation.tsv',
+  stringsAsFactors = FALSE,
+  sep = '\t',
+  header = TRUE)
+
+# PHH spheroid RNAseq
+PHH_RNAseq_tpm_mean <- read.table(file = 'results/spheroid_TPM_norm_counts_mean.txt',
+                                  header = T,
+                                  sep = '\t',
+                                  quote = '')
+
+```
+
+
+# TEAD family expression
+
+## Mouse (CD, HFD & HFD + ER treatments)
+
+```{r, fig.width=10, fig.height=8}
+TEAD_genes <- c('Tead1','Tead2','Tead3','Tead4')
+
+df <- mouse_RNAseq$tpm %>% 
+  tibble::rownames_to_column(var = 'gene') %>% 
+  dplyr::mutate(gene = dplyr::recode(gene,
+                                     !!!setNames(mouse_RNAseq$gene_ann$external_gene_name,
+                                                 mouse_RNAseq$gene_ann$geneID))) %>% 
+  dplyr::filter(gene %in% TEAD_genes) %>% 
+  dplyr::mutate(gene = factor(gene, levels = TEAD_genes)) %>% 
+  dplyr::arrange(gene) %>% 
+  tidyr::pivot_longer(CD_female_1:PPT_HFD_male_3, names_to = 'sample', values_to = 'tpm_expr') %>% 
+  dplyr::left_join(mouse_RNAseq$design_meta, by = 'sample') %>% 
+  dplyr::filter(!condition %in% c('CDf','HFDf')) %>% 
+  dplyr::mutate(condition = factor(condition, levels = names(colPals$conditions)[-c(1,2)]))
+
+df2 <- df %>% 
+  dplyr::group_by(gene, condition) %>% 
+  dplyr::select(gene, condition, tpm_expr) %>% 
+  dplyr::summarize_each(dplyr::funs(mean, sd, se=sd(.)/sqrt(n())), tpm_expr) %>% 
+  dplyr::arrange(gene, condition)
+
+TEAD_expr_mouse <- df2 %>% 
+  dplyr::select(gene, condition, mean) %>% 
+  tidyr::pivot_wider(names_from = 'condition', values_from = 'mean')
+
+p <- lapply(TEAD_genes, function(x){
+  ggplot() +
+  geom_errorbar(data=df2 %>% dplyr::filter(gene == x), aes(x=condition, ymin=mean-sd, ymax=mean+sd),
+                position= position_dodge(width=0.9), width=0.3) +
+  geom_col(data=df2 %>% dplyr::filter(gene == x), aes(x=condition, y=mean, fill=condition), 
+           position = position_dodge(width=0.9), color="black") +
+  geom_point(data=df %>% dplyr::filter(gene == x), aes(x=condition, y=tpm_expr), 
+             shape=21, size=2.5, alpha=0.5, fill="darkgrey", position = position_dodge(width=0.9)) +
+  scale_fill_manual(values = alpha(colPals$conditions, 0.9)) +
+  xlab("") +
+  ylab(paste(x,"expression (TPM)")) +
+  theme_bw() +
+  theme(axis.text.x =element_text(angle=90, hjust=0.95, vjust=0.5),
+        text = element_text(size=15)) +
+  theme(legend.position="none")
+})
+
+patchwork::wrap_plots(p, nrow=2, ncol=2, byrow=T)
+
+```
+
+## Human NAFLD patient cohort
+
+```{r, fig.width=8, fig.height=8}
+TEAD_genes <- c('TEAD1','TEAD2','TEAD3','TEAD4')
+
+df <- cohort_data$Govaere$cpm_filt %>% 
+  tibble::rownames_to_column(var = 'gene') %>% 
+  dplyr::filter(gene %in% TEAD_genes) %>% 
+  dplyr::mutate(gene = factor(gene, levels = TEAD_genes)) %>% 
+  dplyr::arrange(gene) %>% 
+  tidyr::pivot_longer(cohort_data$Govaere$meta$Patient, names_to = 'Patient', values_to = 'cpm_expr') %>% 
+  dplyr::left_join(cohort_data$Govaere$meta, by = 'Patient') %>% 
+  dplyr::mutate(Stage = factor(Stage, levels = c('CTRL','NAFL','NASH')))
+
+df2 <- df %>% 
+  dplyr::group_by(gene, Stage) %>% 
+  dplyr::select(gene, Stage, cpm_expr) %>% 
+  dplyr::summarize_each(dplyr::funs(median, sd, se=sd(.)/sqrt(n())), cpm_expr) %>% 
+  dplyr::arrange(gene, Stage)
+
+TEAD_expr_human_NAFLD <- df2 %>% 
+  dplyr::select(gene, Stage, median) %>% 
+  tidyr::pivot_wider(names_from = 'Stage', values_from = 'median')
+
+p <- lapply(TEAD_genes, function(x){
+  ggplot(df %>% dplyr::filter(gene == x) , aes(x=Stage, y=cpm_expr)) +
+  geom_boxplot(outlier.shape = NA) +
+  coord_cartesian(ylim = quantile(df %>% dplyr::filter(gene == x) %>% pull(cpm_expr), c(0, 0.999))) +
+  xlab("") +
+  ylab(paste(x,"expression (CPM)")) +
+  theme_bw() +
+  theme(text = element_text(size=15)) +
+  theme(legend.position="none")
+})
+
+patchwork::wrap_plots(p, nrow=2, ncol=2, byrow=T)
+
+```
+
+## Mouse single-cell
+
+```{r, fig.width=10, fig.height=8}
+TEAD_genes <- c('Tead1','Tead2','Tead3','Tead4')
+
+set.seed(22)
+dat <- liver$mouseStSt$All
+subs <- dat@meta.data %>% 
+  tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::left_join(liver_meta, by = 'sample') %>% 
+  dplyr::filter(sex == 'male' & annot != 'HsPCs')
+dat <- subset(dat, cells = subs$cellid)
+
+DefaultAssay(dat) <- "RNA"
+Idents(dat) <- dat$annot
+
+df <- AverageExpression(dat, slot = 'data', features = TEAD_genes) %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column('gene') %>% 
+  tidyr::pivot_longer(colnames(.)[-c(1)], names_to = 'cell_type', values_to = 'expr') %>% 
+  dplyr::mutate(cell_type = gsub('RNA\\.', '', cell_type)) %>%
+  dplyr::mutate(cell_type = gsub('\\.', ' ', cell_type)) %>% 
+  dplyr::mutate(cell_type = gsub('  ', '\\. ', cell_type)) %>% 
+  dplyr::mutate(cell_type = gsub('Monocytes\\.  Monocyte ', 'Monocytes & Monocyte-', cell_type)) %>% 
+  dplyr::mutate(cell_type = replace(cell_type, cell_type == 'Fibroblasts', 'Stromal cells')) %>% 
+  dplyr::mutate(cell_type = factor(cell_type, levels = names(colPals$celltypes)))
+
+TEAD_expr_mouse_single_cell_stst <- df %>% 
+  tidyr::pivot_wider(names_from = 'gene', values_from = 'expr') %>% 
+  dplyr::arrange(factor(cell_type, levels = names(colPals$celltypes)))
+
+ggplot(df, aes(x=cell_type, y=expr, fill=cell_type)) +
+  geom_col(position = position_dodge(width=0.9), color="black") +
+  scale_fill_manual(values = alpha(colPals$celltypes, 0.9)) +
+  xlab("") +
+  ylab("Normalized expression") +
+  facet_wrap(~gene, scales = 'free_y') +
+  theme_bw() +
+  theme(axis.text.x =element_text(angle=90, hjust=0.95, vjust=0.5),
+        text = element_text(size=12)) +
+  theme(legend.position="none")
+
+```
+
+# PHH spheroids (control + TEAD inhibitors)
+
+```{r, fig.width=8, fig.height=8}
+TEAD_genes <- c('TEAD1','TEAD2','TEAD3','TEAD4')
+
+df <- PHH_RNAseq_tpm_mean %>% 
+  dplyr::filter(external_gene_name %in% TEAD_genes) %>% 
+  dplyr::select(external_gene_name, control, TEADsf, TEADap) %>% 
+  dplyr::rename(gene = external_gene_name) %>% 
+  dplyr::mutate(gene = factor(gene, levels = TEAD_genes)) %>% 
+  dplyr::arrange(gene) %>% 
+  pivot_longer(control:TEADap, names_to = 'condition', values_to = 'tpm_expr')
+
+TEAD_expr_PHH_spheroids <- df %>% 
+  tidyr::pivot_wider(names_from = 'condition', values_from = 'tpm_expr')
+
+ggplot(df, aes(x=condition, y=tpm_expr)) +
+  geom_col(position = position_dodge(width=0.9), color="black") +
+  scale_fill_manual(values = alpha(colPals$celltypes, 0.9)) +
+  xlab("") +
+  ylab("TPM expression") +
+  facet_wrap(~gene, scales = 'free_y') +
+  theme_bw() +
+  theme(text = element_text(size=12)) +
+  theme(legend.position="none")
+
+```
+
+
+# ER expression
+
+## Mouse (CD, HFD & HFD + ER treatments)
+
+```{r, fig.width=10, fig.height=4}
+ER_genes <- c('Esr1','Esr2')
+
+df <- mouse_RNAseq$tpm %>% 
+  tibble::rownames_to_column(var = 'gene') %>% 
+  dplyr::mutate(gene = dplyr::recode(gene,
+                                     !!!setNames(mouse_RNAseq$gene_ann$external_gene_name,
+                                                 mouse_RNAseq$gene_ann$geneID))) %>% 
+  dplyr::filter(gene %in% ER_genes) %>% 
+  dplyr::mutate(gene = factor(gene, levels = ER_genes)) %>% 
+  dplyr::arrange(gene) %>% 
+  tidyr::pivot_longer(CD_female_1:PPT_HFD_male_3, names_to = 'sample', values_to = 'tpm_expr') %>% 
+  dplyr::left_join(mouse_RNAseq$design_meta, by = 'sample') %>% 
+  dplyr::filter(!condition %in% c('CDf','HFDf')) %>% 
+  dplyr::mutate(condition = factor(condition, levels = names(colPals$conditions)[-c(1,2)]))
+
+df2 <- df %>% 
+  dplyr::group_by(gene, condition) %>% 
+  dplyr::select(gene, condition, tpm_expr) %>% 
+  dplyr::summarize_each(dplyr::funs(mean, sd, se=sd(.)/sqrt(n())), tpm_expr) %>% 
+  dplyr::arrange(gene, condition)
+
+ER_expr_mouse <- df2 %>% 
+  dplyr::select(gene, condition, mean) %>% 
+  tidyr::pivot_wider(names_from = 'condition', values_from = 'mean')
+
+p <- lapply(ER_genes, function(x){
+  ggplot() +
+  geom_errorbar(data=df2 %>% dplyr::filter(gene == x), aes(x=condition, ymin=mean-sd, ymax=mean+sd),
+                position= position_dodge(width=0.9), width=0.3) +
+  geom_col(data=df2 %>% dplyr::filter(gene == x), aes(x=condition, y=mean, fill=condition), 
+           position = position_dodge(width=0.9), color="black") +
+  geom_point(data=df %>% dplyr::filter(gene == x), aes(x=condition, y=tpm_expr), 
+             shape=21, size=2.5, alpha=0.5, fill="darkgrey", position = position_dodge(width=0.9)) +
+  scale_fill_manual(values = alpha(colPals$conditions, 0.9)) +
+  xlab("") +
+  ylab(paste(x,"expression (TPM)")) +
+  theme_bw() +
+  theme(axis.text.x =element_text(angle=90, hjust=0.95, vjust=0.5),
+        text = element_text(size=15)) +
+  theme(legend.position="none")
+})
+
+patchwork::wrap_plots(p, nrow=1, ncol=2, byrow=T)
+
+```
+
+## Human NAFLD patient cohort
+
+```{r, fig.width=8, fig.height=4}
+ER_genes <- c('ESR1','ESR2')
+
+df <- cohort_data$Govaere$cpm_filt %>% 
+  tibble::rownames_to_column(var = 'gene') %>% 
+  dplyr::filter(gene %in% ER_genes) %>% 
+  dplyr::mutate(gene = factor(gene, levels = ER_genes)) %>% 
+  dplyr::arrange(gene) %>% 
+  tidyr::pivot_longer(cohort_data$Govaere$meta$Patient, names_to = 'Patient', values_to = 'cpm_expr') %>% 
+  dplyr::left_join(cohort_data$Govaere$meta, by = 'Patient') %>% 
+  dplyr::mutate(Stage = factor(Stage, levels = c('CTRL','NAFL','NASH')))
+
+df2 <- df %>% 
+  dplyr::group_by(gene, Stage) %>% 
+  dplyr::select(gene, Stage, cpm_expr) %>% 
+  dplyr::summarize_each(dplyr::funs(median, sd, se=sd(.)/sqrt(n())), cpm_expr) %>% 
+  dplyr::arrange(gene, Stage)
+
+ER_expr_human_NAFLD <- df2 %>% 
+  dplyr::select(gene, Stage, median) %>% 
+  tidyr::pivot_wider(names_from = 'Stage', values_from = 'median')
+
+p <- lapply(ER_genes, function(x){
+  ggplot(df %>% dplyr::filter(gene == x) , aes(x=Stage, y=cpm_expr)) +
+  geom_boxplot(outlier.shape = NA) +
+  coord_cartesian(ylim = quantile(df %>% dplyr::filter(gene == x) %>% pull(cpm_expr), c(0, 0.999))) +
+  xlab("") +
+  ylab(paste(x,"expression (CPM)")) +
+  theme_bw() +
+  theme(text = element_text(size=15)) +
+  theme(legend.position="none")
+})
+
+patchwork::wrap_plots(p, nrow=1, ncol=2, byrow=T)
+
+```
+
+## Mouse single-cell
+
+```{r, fig.width=10, fig.height=5}
+ER_genes <- c('Esr1','Esr2')
+
+set.seed(22)
+dat <- liver$mouseStSt$All
+subs <- dat@meta.data %>% 
+  tibble::rownames_to_column(var = 'cellid') %>% 
+  dplyr::left_join(liver_meta, by = 'sample') %>% 
+  dplyr::filter(sex == 'male' & annot != 'HsPCs')
+dat <- subset(dat, cells = subs$cellid)
+
+DefaultAssay(dat) <- "RNA"
+Idents(dat) <- dat$annot
+
+df <- AverageExpression(dat, slot = 'data', features = ER_genes) %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column('gene') %>% 
+  tidyr::pivot_longer(colnames(.)[-c(1)], names_to = 'cell_type', values_to = 'expr') %>% 
+  dplyr::mutate(cell_type = gsub('RNA\\.', '', cell_type)) %>%
+  dplyr::mutate(cell_type = gsub('\\.', ' ', cell_type)) %>% 
+  dplyr::mutate(cell_type = gsub('  ', '\\. ', cell_type)) %>% 
+  dplyr::mutate(cell_type = gsub('Monocytes\\.  Monocyte ', 'Monocytes & Monocyte-', cell_type)) %>% 
+  dplyr::mutate(cell_type = replace(cell_type, cell_type == 'Fibroblasts', 'Stromal cells')) %>% 
+  dplyr::mutate(cell_type = factor(cell_type, levels = names(colPals$celltypes)))
+
+ER_expr_mouse_single_cell_stst <- df %>% 
+  tidyr::pivot_wider(names_from = 'gene', values_from = 'expr') %>% 
+  dplyr::arrange(factor(cell_type, levels = names(colPals$celltypes)))
+
+ggplot(df, aes(x=cell_type, y=expr, fill=cell_type)) +
+  geom_col(position = position_dodge(width=0.9), color="black") +
+  scale_fill_manual(values = alpha(colPals$celltypes, 0.9)) +
+  xlab("") +
+  ylab("Normalized expression") +
+  facet_wrap(~gene, scales = 'free_y') +
+  theme_bw() +
+  theme(axis.text.x =element_text(angle=90, hjust=0.95, vjust=0.5),
+        text = element_text(size=12)) +
+  theme(legend.position="none")
+
+```
+
+# PHH spheroids (control + TEAD inhibitors)
+
+```{r, fig.width=8, fig.height=4}
+ER_genes <- c('ESR1','ESR2')
+
+df <- PHH_RNAseq_tpm_mean %>% 
+  dplyr::filter(external_gene_name %in% ER_genes) %>% 
+  dplyr::select(external_gene_name, control, TEADsf, TEADap) %>% 
+  dplyr::rename(gene = external_gene_name) %>% 
+  dplyr::mutate(gene = factor(gene, levels = ER_genes)) %>% 
+  dplyr::arrange(gene) %>% 
+  pivot_longer(control:TEADap, names_to = 'condition', values_to = 'tpm_expr')
+
+ER_expr_PHH_spheroids <- df %>% 
+  tidyr::pivot_wider(names_from = 'condition', values_from = 'tpm_expr')
+
+ggplot(df, aes(x=condition, y=tpm_expr)) +
+  geom_col(position = position_dodge(width=0.9), color="black") +
+  scale_fill_manual(values = alpha(colPals$celltypes, 0.9)) +
+  xlab("") +
+  ylab("TPM expression") +
+  facet_wrap(~gene, scales = 'free_y') +
+  theme_bw() +
+  theme(text = element_text(size=12)) +
+  theme(legend.position="none")
+
+```
+
+
+# Exports
+
+```{r}
+TEAD_expr <- list(mouse_HFD_ER_agonists = TEAD_expr_mouse,
+                  mouse_liver_cell_types = TEAD_expr_mouse_single_cell_stst,
+                  human_NAFLD_patients = TEAD_expr_human_NAFLD,
+                  PHH_TEAD_inhibitors = TEAD_expr_PHH_spheroids)
+saveRDS(TEAD_expr, file = 'results/TEAD_family_expression.rds')
+
+ER_expr <- list(mouse_HFD_ER_agonists = ER_expr_mouse,
+                mouse_liver_cell_types = ER_expr_mouse_single_cell_stst,
+                human_NAFLD_patients = ER_expr_human_NAFLD,
+                PHH_TEAD_inhibitors = ER_expr_PHH_spheroids)
+saveRDS(ER_expr, file = 'results/ER_family_expression.rds')
+
+```
+
+
+# SessionInfo
+
+```{r}
+sessionInfo()
+
+```

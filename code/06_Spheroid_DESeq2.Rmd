@@ -1,4 +1,3 @@
-
 ---
 title: 'Hepatoprotective effects of systemic ER activation'
 subtitle: 'Spheroid RNA-seq - Differential expression analysis'
@@ -15,18 +14,32 @@ path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
 path <- path[-c((length(path)-0):length(path))]
 path <- paste(path, collapse = '/')
 knitr::opts_knit$set(root.dir = path)
-knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'cairo_pdf')
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  size <- 'scriptsize'
+  x <- def.chunk.hook(x, options)
+  paste0("\n \\", size, "\n\n", x, "\n\n \\normalsize")
+})
+
 
 ```
 
+
 # Load packages
+
 ```{r}
+source("code/00_helper_functions.R")
 library(tidyverse)
 library(DESeq2)
 library(biomaRt)
+library(ggvenn)
+
 ```
 
+
 # Load featureCount table
+
 ```{r}
 count_table <- read.table("data/raw_fq_featurecounts_inhibitors_spheroids.txt", header=T) %>% drop_na()
 
@@ -34,8 +47,12 @@ names(count_table) <- gsub("hisat2_aligned\\.|\\.bam", "", names(count_table))
 
 count_table.2 <- count_table  %>% tibble::column_to_rownames("Geneid") %>% dplyr::select(2:9) 
 head(count_table.2)
+
 ```
+
+
 # Design metatables
+
 ```{r}
 sample_name_inhibitors <- names(count_table.2)
 replicate_inhibitors <- c(1,2,3,1,2,1,2,3)
@@ -44,13 +61,14 @@ meta_table_inhibitors <- data.frame(Sample=sample_name_inhibitors, Condition=Con
 write.table(meta_table_inhibitors, "results/spheroid_meta_table.txt", sep="\t", quote=F)
 ```
 
+
 # Export TPM-normalized count table
+
 ```{r}
 # normalize to TPM
-source("code/00_helper_functions.R")
 count_table_TPM <- normalizeData(x=count_table.2, method = "TPM", len = count_table$Length) 
 
-count_table_TPM_mean <- groupTransform_nontibble(x=count_table_TPM, 
+count_table_TPM_mean <- groupTransform(x=count_table_TPM, 
                group.lbls = meta_table_inhibitors$Condition,
                FUN=function(x) apply(x, 1, mean)) %>% 
                tibble::rownames_to_column("ensembl_gene_id")
@@ -74,7 +92,9 @@ write.table(export_TPM_normTables_single, "results/spheroid_TPM_norm_counts.txt"
 write.table(export_TPM_normTables_mean, "results/spheroid_TPM_norm_counts_mean.txt", sep="\t", quote=F, row.names = F)
 ```
 
+
 # Run DESeq2 function and plot a PCA
+
 ```{r}
 ds_data_inhibitors <- DESeqDataSetFromMatrix(countData = count_table.2,
                                  colData = meta_table_inhibitors,
@@ -94,6 +114,7 @@ ggplot(PCA.to.plot_inhibitors$data, aes(x=PC1, y=PC2, fill=group), color="black"
   theme_light() +
   ylab("PC2 - 14% variance explained") + # took the number from the original plotPCA function
   xlab("PC1 - 72% variance explained")
+
 ```
 
 ```{r}
@@ -139,7 +160,33 @@ write.table(DESeq2_DEGs_inhibitors$filt$TEADap_vs_control, "results/TEADap_vs_co
 write.table(DESeq2_DEGs_inhibitors$filt$TEADsf_vs_control, "results/TEADsf_vs_control_DEGs_DESeq2.txt", sep="\t", row.names=F, quote=F)
 ```
 
+
+# Venn diagram TEADsf & TEADap DEGs
+
+```{r,fid.height=6, fig.width=8}
+DEGs_TEADap <- DESeq2_DEGs_inhibitors$filt$TEADap_vs_control %>% 
+  pull(ensembl_gene_id) %>% 
+  unique()
+
+DEGs_TEADsf <- DESeq2_DEGs_inhibitors$filt$TEADsf_vs_control %>% 
+  pull(ensembl_gene_id) %>% 
+  unique()
+
+venn <- list(TEADap = DEGs_TEADap,
+             TEADsf = DEGs_TEADsf)
+  
+# create venn diagram 
+ggvenn(venn, c("TEADsf", "TEADap"),
+       auto_scale=TRUE,
+       fill_color = c("black", "black"))
+
+```
+
+
+# SessionInfo
+
 ```{r}
 sessionInfo()
+
 ```
 

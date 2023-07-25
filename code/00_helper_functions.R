@@ -106,26 +106,13 @@ groupTransform <- function(x, group.lbls, FUN) {
   
   res <- lapply(group.lbls.uniq, function(lbl) FUN(x[, group.lbls==lbl]))
   res <- dplyr::bind_cols(res)
-  row.names(res) <- row.names(x)
-  colnames(res) <- unlist(group.lbls.uniq)
-  
-  return(as.data.frame(res))
-}
-
-#From Carlos, but modified so it doesnt make tibbles
-groupTransform_nontibble <- function(x, group.lbls, FUN) {
-  
-  
-  group.lbls.uniq <- unique(group.lbls)
-  group.lbls.uniq <- split(group.lbls.uniq, 1:length(group.lbls.uniq))
-  
-  res <- lapply(group.lbls.uniq, function(lbl) FUN(x[, group.lbls==lbl]))
-  res <- dplyr::bind_cols(res)
-  colnames(res) <- unlist(group.lbls.uniq)
   res <- as.data.frame(res)
   row.names(res) <- row.names(x)
+  colnames(res) <- unlist(group.lbls.uniq)
+  
   return(res)
 }
+
 
 #' Transforms data according to column-wise grouping using a function (e.g. mean, median...)
 #' @param x A dataframe or matrix
@@ -566,4 +553,21 @@ tailFraction <- function(value, distr, tail = 'left') {
   }
   
   return(res)
+}
+
+
+#' Makes duplicated elements in vector unique
+#' @param v A vector with duplicated elements to make unique
+#' @param sep Separator used to add unique number to duplicated elements
+#' @return Uniquified vector
+#' 
+#' @author carlga
+#' 
+uniquify <- function(v, sep = '_'){
+  ave(v, v, FUN = function(x) {
+    if(length(x) > 1) {
+      paste(x, 1:length(x), sep = sep)
+    } 
+    else x
+  })
 }

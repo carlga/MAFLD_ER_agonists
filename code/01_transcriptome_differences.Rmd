@@ -218,6 +218,7 @@ names(intersections) <- c("shared_genes", "CDf_HFDf_unique", "CDm_HFDm_unique")
 intersections[[1]] <- intersect(CDf_HFDf$ensembl_gene_id,CDm_HFDm$ensembl_gene_id)
 intersections[[2]] <- setdiff(CDf_HFDf$ensembl_gene_id, intersections$shared_genes)
 intersections[[3]] <- setdiff(CDm_HFDm$ensembl_gene_id, intersections$shared_genes)
+
 ```
 
 
@@ -259,7 +260,7 @@ for (i in 1:3) {
           ggtitle(paste(unique(GO_list$GO.top8[[i]]$GeneSet))) +
           scale_fill_gradient(low="grey", high= "black", limits=c(1,15)))
   
-  write.table(GO_list$GO.results[[i]]@result, paste0("Supplementary_tables/FigS1E_GO_", unique(GO_list$GO.top8[[i]]$GeneSet), ".txt"), sep="\t", quote=F, row.names = F)
+  # write.table(GO_list$GO.results[[i]]@result, paste0("Supplementary_tables/FigS1E_GO_", unique(GO_list$GO.top8[[i]]$GeneSet), ".txt"), sep="\t", quote=F, row.names = F)
 } 
 
 ```
