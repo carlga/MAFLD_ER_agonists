@@ -7,5 +7,5 @@
 
 bed_path="../../results/Epigenome_analysis"
 
-awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${bed_path}/promoters_allDB_182_anno.bed > ${bed_path}/promoters_allDB_182.saf
-awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${bed_path}/enhancers_allDB_1816_anno.bed > ${bed_path}/enhancers_allDB_1816.saf
+awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${bed_path}/promoters_allDB_142_anno.bed > ${bed_path}/promoters_allDB_142_anno.saf
+awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${bed_path}/enhancers_allDB_2181_anno.bed > ${bed_path}/enhancers_allDB_2181_anno.saf

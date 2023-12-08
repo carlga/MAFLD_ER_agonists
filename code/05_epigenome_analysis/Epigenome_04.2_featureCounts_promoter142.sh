@@ -1,19 +1,10 @@
-#!/bin/bash
-#UPPMAX commands (Uppsala Multidisciplinary Center for Advanced Computational Science)
-#SBATCH -A snic2021-22-960
-#SBATCH -p core
-#SBATCH -n 2
-#SBATCH -t 2:00:00
-#SBATCH -J 220825_FeatureCounts
-#SBATCH --output=220825_FeatureCounts_enh.out
-#SBATCH --error=220825_FeatureCounts_enh.err
 
 #load packages. bioinfo-tools is loaded on uppmax in order to load all other packages used.
 module load bioinfo-tools
 module load subread/2.0.0
 
 #file paths
-BAM_PATH="../Mapping"
+BAM_PATH="../old_new_fastq_combined/Mapping/H3K4me3"
 OUTPUT_PATH="."
 SAF_PATH="."
 
@@ -26,10 +17,10 @@ featureCounts \
 	-F SAF \
         -O \
         -C \
-        -a ${SAF_PATH}/enhancers_allDB_1816.saf  \
-        -o ${OUTPUT_PATH}/DAc_enhancers_1816_H3K27ac.readCount \
+        -a ${SAF_PATH}/promoters_allDB_142_anno.saf  \
+        -o ${OUTPUT_PATH}/DAc_promoters_142_H3K27ac.readCount \
         ${BAM_PATH}/*H3K27ac*MkDup.bam \
-        &> ${OUTPUT_PATH}/DAc_enhancers_1816_H3K27ac.readCount.log
+        &> ${OUTPUT_PATH}/DAc_promoters_142_H3K27ac.readCount.log
 
 
 #Readme

@@ -28,32 +28,54 @@ sessionInfo()
 
 ```{r}
 getwd()
-samples <- c("CD2", "CD9", "HFD3", "HFD4","DPN2", "DPN3", "E2_8", "E2_9")
-Factor_K27 <- c(rep("H3K27ac", 8))
-PeakCaller <- c(rep("macs", 8))
-Replicate <- c(rep(1:2, 4))
-Treatment <- c(rep("CD", 2), rep("HFD", 2), rep("DPN", 2), rep("E2", 2)) 
-files_K27 <- c("data/Downloaded_from_Arrayexpress/Peakfiles/CK0744_H3K27ac_CD2_peaks.broadPeak",
-           "data/Downloaded_from_Arrayexpress/Peakfiles/CK0745_H3K27ac_CD9_peaks.broadPeak",
-           "data/Downloaded_from_Arrayexpress/Peakfiles/CK0746_H3K27ac_HFD3_peaks.broadPeak",
-           "data/Downloaded_from_Arrayexpress/Peakfiles/CK0747_H3K27ac_HFD4_peaks.broadPeak",
-           "data/Downloaded_from_Arrayexpress/Peakfiles/CK0748_H3K27ac_DPN2_peaks.broadPeak",
-           "data/Downloaded_from_Arrayexpress/Peakfiles/CK0749_H3K27ac_DPN3_peaks.broadPeak",
-           "data/Downloaded_from_Arrayexpress/Peakfiles/CK0750_H3K27ac_E2_8_peaks.broadPeak",
-           "data/Downloaded_from_Arrayexpress/Peakfiles/CK0751_H3K27ac_E2_9_peaks.broadPeak")
+samples <- c("CD2","CD6", "CD9", "HFD3", "HFD4","HFD6", "DPN2", "DPN3","DPN6","DIP3", "DIP6","DIP10", "E2_2", "E2_8", "E2_9", "PPT1", "PPT2", "PPT3")
+Factor_K27 <- c(rep("H3K27ac", 18))
+PeakCaller <- c(rep("macs", 18))
+Replicate <- c(rep(1:3, 6))
+Treatment <- c(rep("CD", 3), rep("HFD", 3), rep("DPN", 3), rep("DIP", 3), rep("E2", 3), rep("PPT", 3)) 
+files_K27 <- c("files/Peak_calling_MACS2/231128_CK0744_H3K27ac_CD2_peaks.broadPeak",
+               "files/Peak_calling_MACS2/231128_CD6_H3K27ac_peaks.broadPeak",
+               "files/Peak_calling_MACS2/231128_CK0745_H3K27ac_CD9_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_CK0746_H3K27ac_HFD3_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_CK0747_H3K27ac_HFD4_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_HFD6_H3K27ac_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_CK0748_H3K27ac_DPN2_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_CK0749_H3K27ac_DPN3_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_DPN6_H3K27ac_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_DIP3_H3K27ac_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_DIP6_H3K27ac_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_DIP10_H3K27ac_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_E2_2_H3K27ac_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_CK0750_H3K27ac_E2_8_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_CK0751_H3K27ac_E2_9_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_PPT1_H3K27ac_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_PPT2_H3K27ac_peaks.broadPeak",
+           "files/Peak_calling_MACS2/231128_PPT3_H3K27ac_peaks.broadPeak")
+           
 
-bam.files_K27 <- c("data/Downloaded_from_Arrayexpress/Bamfiles/CK0744_H3K27ac_CD2_psort_BL_fix_MkDup.bam",
-               "data/Downloaded_from_Arrayexpress/Bamfiles/CK0745_H3K27ac_CD9_psort_BL_fix_MkDup.bam",
-               "data/Downloaded_from_Arrayexpress/Bamfiles/CK0746_H3K27ac_HFD3_psort_BL_fix_MkDup.bam",
-               "data/Downloaded_from_Arrayexpress/Bamfiles/CK0747_H3K27ac_HFD4_psort_BL_fix_MkDup.bam",
-               "data/Downloaded_from_Arrayexpress/Bamfiles/CK0748_H3K27ac_DPN2_psort_BL_fix_MkDup.bam",
-               "data/Downloaded_from_Arrayexpress/Bamfiles/CK0749_H3K27ac_DPN3_psort_BL_fix_MkDup.bam",
-               "data/Downloaded_from_Arrayexpress/Bamfiles/CK0750_H3K27ac_E2_8_psort_BL_fix_MkDup.bam",
-               "data/Downloaded_from_Arrayexpress/Bamfiles/CK0751_H3K27ac_E2_9_psort_BL_fix_MkDup.bam")
+bam.files_K27 <- c("files/BAMfiles/H3K27ac/231127_CK0744_H3K27ac_CD2_psort_BL_fix_MkDup.bam",
+               "files/BAMfiles/H3K27ac/231127_CD6_H3K27ac_S2_R1_001_psort_BL_fix_MkDup.bam",
+               "files/BAMfiles/H3K27ac/231127_CK0745_H3K27ac_CD9_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_CK0746_H3K27ac_HFD3_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_CK0747_H3K27ac_HFD4_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_HFD6_H3K27ac_S8_R1_001_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_CK0748_H3K27ac_DPN2_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_CK0749_H3K27ac_DPN3_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_DPN6_H3K27ac_S15_R1_001_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_DIP3_H3K27ac_S9_R1_001_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_DIP6_H3K27ac_S10_R1_001_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_DIP10_H3K27ac_S11_R1_001_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_E2_2_H3K27ac_S16_R1_001_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_CK0750_H3K27ac_E2_8_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_CK0751_H3K27ac_E2_9_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_PPT1_H3K27ac_S12_R1_001_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_PPT2_H3K27ac_S13_R1_001_psort_BL_fix_MkDup.bam",
+           "files/BAMfiles/H3K27ac/231127_PPT3_H3K27ac_S14_R1_001_psort_BL_fix_MkDup.bam")
 
 metaData_K27 <- data.frame(SampleID = samples, Factor = Factor_K27, Replicate = Replicate, Peaks = files_K27, bamReads = bam.files_K27, PeakCaller, Treatment=Treatment)
 samplesheet_K27 <- dba(sampleSheet=metaData_K27)
 ```
+
 ```{r}
 dba.plotHeatmap(samplesheet_K27)
 ```
@@ -85,20 +107,24 @@ dba.plotVolcano(samplesheet.analysed_K27, contrast = 1)
 ```
 
 ```{r}
-dba.plotBox(samplesheet.analysed_K27, contrast =5)
+dba.plotBox(samplesheet.analysed_K27, contrast =6)
 ```
 # Choose appropriate contrasts, export the full tables, then filter for signficant changes with a minimum foldchange of 50% up or down. 
 # Then split the peaks into Loss/Gain in HFD and export bed files with these sites.
 ```{r}
 res_deseq_K27_CD_vs_HFD <- as.data.frame(dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 1, th=1))
-res_deseq_K27_HFD_vs_DPN <- as.data.frame(dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 4, th=1))
-res_deseq_K27_HFD_vs_E2 <- as.data.frame(dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 5, th=1))
-res_deseq_K27_E2_vs_DPN <- as.data.frame(dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 6, th=1)) # This comparison will not be needed further
+res_deseq_K27_HFD_vs_DPN <- as.data.frame(dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 6, th=1))
+res_deseq_K27_HFD_vs_DIP <- as.data.frame(dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 7, th=1))
+res_deseq_K27_HFD_vs_E2 <- as.data.frame(dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 8, th=1))
+res_deseq_K27_HFD_vs_PPT <- as.data.frame(dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 9, th=1))
+res_deseq_K27_DPN_vs_E2 <- as.data.frame(dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 11, th=1)) 
+res_deseq_K27_DPN_vs_PPT <- as.data.frame(dba.report(samplesheet.analysed_K27, method=DBA_DESEQ2, contrast = 12, th=1))
 
 Diffbind_tables <- list()
 Diffbind_tables$unfiltered <- list(K27_CDvsHFD = res_deseq_K27_CD_vs_HFD,
-                        K27_HFDvsDPN = res_deseq_K27_HFD_vs_DPN,
-                        K27_HFDvsE2 = res_deseq_K27_HFD_vs_E2)
+                                  K27_HFDvsDPN = res_deseq_K27_HFD_vs_DPN,
+                                  K27_HFDvsE2 = res_deseq_K27_HFD_vs_E2,
+                                  K27_HFDvsPPT = res_deseq_K27_HFD_vs_PPT)
 
 Diffbind_tables$all_DB_peaks <- list()
 Diffbind_tables$up_DB_peaks <- list()
@@ -108,7 +134,6 @@ Diffbind_bed_files <- list(
   all_DB_peaks=list(),
   up_DB_peaks=list(),
   down_DB_peaks=list())
-
 # This loop saves the diffbound peaks in the diffbind_tables list
 # This loop also saves the bedfiles in a separate list
 
