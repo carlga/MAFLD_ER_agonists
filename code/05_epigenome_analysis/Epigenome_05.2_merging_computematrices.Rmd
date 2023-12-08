@@ -1,0 +1,274 @@
+---
+title: 'Hepatoprotective effects of systemic ER activation'
+subtitle: 'ChIPseq/Epigenome genome - Enhancer-gene pair analysis'
+author: 'Christian Sommerauer & Carlos Gallardo'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-1):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+```
+
+```{r}
+library(tidyverse)
+```
+
+## We load the matrix file output from computeMatrix (deeptools) and remove the header (which cannot be read properly by R)
+```{r}
+getwd()
+promoter_plot_profile <- read.delim("results/Epigenome_analysis/DB_H3K27ac_up_down_142prom_2K",header=F)
+header <- promoter_plot_profile[1,1]
+promoter_plot_profile <- promoter_plot_profile[2:nrow(promoter_plot_profile),]
+```
+
+## Then, we process this matrix. We slice the individual samples and save them in separate df's in a list. Then, in a loop, we inner_join the three replicates of each condition together, resulting in 1200 columns with data (3x400 10bp bins = 2000 bp). Since the columns exactly 400 away correspond to the same bins, we calculate the average of the three corresponding columns, for bins 1-400. These resulting averaged columns are joined together again by the location columns (cols 1-6). Finally, the modified header has to be pasted back, which can be done in a text editor. The header was modified for work 7 samples, instead of 19 (since we merge the replicates, only input, CD, HFD, DPN, DIP, E2 and PPT remain)
+```{r}
+# Each file has 6 identifier columns and followed by 400 columns adjacent to each other; each 400 columns corresponds for the 400 bins in each sample.
+indices <- seq(7, ncol(promoter_plot_profile), 400)
+identifiers1 <- promoter_plot_profile[,1:6]
+names(identifiers1) <- c("V1", "V2", "V3", "locid", "V5", "V6")
+
+# This loop subsets the orginal matrix into each sample, and adds back the genomic location columns
+matrix_list <- list()
+for (i in 1:19) {
+aaa <- (promoter_plot_profile[, c(indices[i]:(indices[i]+399))]) 
+names(aaa) <- paste0("V", indices[i]:(indices[i]+399))
+matrix_list[[i]] <- cbind(identifiers1, aaa)
+
+}
+
+# We name which df corresponds to which sample.
+names(matrix_list) <- c("input", "CD2","CD6", "CD9", "HFD3", "HFD4","HFD6", "DPN2", "DPN3","DPN6", "DIP3", "DIP6", "DIP10", "E2_2", "E2_8", "E2_9", "PPT1", "PPT2", "PPT3")
+
+# Proof of principle for one sample and one columns. In the next section, we loop through all 400 columns per sample.
+CD <- inner_join(matrix_list$CD2, inner_join(matrix_list$CD6, matrix_list$CD9, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+CD.2 <- CD %>% mutate(avg_V1 = rowMeans(subset(., select=c(V407, V807, V1207))))
+
+# For each condition, we loop through the 400 bins. We work with an index vector, that is used to select the correct column intervals. The numbers in the index.count vector correspond to the columns of the first replicate, by adding 400 to it, we get the matching bins in the second replicate, and by adding 800 to this number, we get the columns of the third replicate.
+index.count <- c(407:806)
+length(index.count)
+
+CD.list <- list()
+for (i in 1:length(index.count)) {
+column_name <- paste0("Avg_V",index.count[i])
+CD.list[[i]] <- CD %>%
+  mutate(!!column_name := rowMeans(subset(CD, select=c(paste0("V",(index.count[i])),
+                                                                paste0("V",(index.count[i]+400)),
+                                                                paste0("V",(index.count[i]+800))))))  %>% dplyr::select(1207)
+}
+# We bind all 400 dataframes together. Since the columns are named as appearing in the original count matrix, they are joined in the correct order.
+CD.merged <- do.call(cbind,CD.list) 
+CD.merged <- cbind(CD[,1:6], CD.merged)
+
+HFD <- inner_join(matrix_list$HFD3, inner_join(matrix_list$HFD4, matrix_list$HFD6, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+index.count <- c(1607:2006)
+length(index.count)
+HFD.list <- list()
+for (i in 1:length(index.count)) {
+column_name <- paste0("Avg_V",index.count[i])
+HFD.list[[i]] <- HFD %>%
+  mutate(!!column_name := rowMeans(subset(HFD, select=c(paste0("V",(index.count[i])),
+                                                                paste0("V",(index.count[i]+400)),
+                                                                paste0("V",(index.count[i]+800))))))  %>% dplyr::select(1207)
+}
+HFD.merged <- do.call(cbind,HFD.list) 
+HFD.merged <- cbind(HFD[,1:6], HFD.merged)
+
+DPN <- inner_join(matrix_list$DPN2, inner_join(matrix_list$DPN3, matrix_list$DPN6, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+index.count <- c(2807:3206)
+length(index.count)
+DPN.list <- list()
+for (i in 1:length(index.count)) {
+column_name <- paste0("Avg_V",index.count[i])
+DPN.list[[i]] <- DPN %>%
+  mutate(!!column_name := rowMeans(subset(DPN, select=c(paste0("V",(index.count[i])),
+                                                                paste0("V",(index.count[i]+400)),
+                                                                paste0("V",(index.count[i]+800))))))  %>% dplyr::select(1207)
+}
+DPN.merged <- do.call(cbind,DPN.list) 
+DPN.merged <- cbind(DPN[,1:6], DPN.merged)
+
+DIP <- inner_join(matrix_list$DIP3, inner_join(matrix_list$DIP6, matrix_list$DIP10, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+index.count <- c(4007:4406)
+length(index.count)
+DIP.list <- list()
+for (i in 1:length(index.count)) {
+column_name <- paste0("Avg_V",index.count[i])
+DIP.list[[i]] <- DIP %>%
+  mutate(!!column_name := rowMeans(subset(DIP, select=c(paste0("V",(index.count[i])),
+                                                                paste0("V",(index.count[i]+400)),
+                                                                paste0("V",(index.count[i]+800))))))  %>% dplyr::select(1207)
+}
+DIP.merged <- do.call(cbind,DIP.list) 
+DIP.merged <- cbind(DIP[,1:6], DIP.merged)
+
+E2 <- inner_join(matrix_list$E2_2, inner_join(matrix_list$E2_8, matrix_list$E2_9, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+index.count <- c(5207:5606)
+length(index.count)
+E2.list <- list()
+for (i in 1:length(index.count)) {
+column_name <- paste0("Avg_V",index.count[i])
+E2.list[[i]] <- E2 %>%
+  mutate(!!column_name := rowMeans(subset(E2, select=c(paste0("V",(index.count[i])),
+                                                                paste0("V",(index.count[i]+400)),
+                                                                paste0("V",(index.count[i]+800))))))  %>% dplyr::select(1207)
+}
+E2.merged <- do.call(cbind,E2.list) 
+E2.merged <- cbind(E2[,1:6], E2.merged)
+
+PPT <- inner_join(matrix_list$PPT1, inner_join(matrix_list$PPT2, matrix_list$PPT3, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+index.count <- c(6407:6806)
+length(index.count)
+PPT.list <- list()
+for (i in 1:length(index.count)) {
+column_name <- paste0("Avg_V",index.count[i])
+PPT.list[[i]] <- PPT %>%
+  mutate(!!column_name := rowMeans(subset(PPT, select=c(paste0("V",(index.count[i])),
+                                                                paste0("V",(index.count[i]+400)),
+                                                                paste0("V",(index.count[i]+800)))))) %>% dplyr::select(1207)
+}
+PPT.merged <- do.call(cbind,PPT.list) 
+PPT.merged <- cbind(PPT[,1:6], PPT.merged)
+
+# Lastly, join together all the individual conditions in the correct order. The input sample is simply taken from the original matrix.
+# promoter_plot_profile <- promoter_plot_profile %>% rename("locid"=V4)
+joined_matrix.promoters <- inner_join(promoter_plot_profile[,1:406], inner_join(CD.merged, inner_join(HFD.merged, inner_join(DPN.merged, inner_join(DIP.merged, inner_join(E2.merged, PPT.merged, by=c("V1", "V2", "V3", "locid", "V5", "V6")))))))
+ncol(joined_matrix.promoters)
+
+write.table(joined_matrix.promoters, file="results/Epigenome_analysis/merged_promoters_replicates.mat", quote=F, col.names = F, row.names = F, sep="\t")
+
+# The following modified header has to be pasted back into the first row of the resulting text file (uncomment before copying)
+
+# @{"upstream":[2000,2000,2000,2000,2000,2000,2000],"downstream":[2000,2000,2000,2000,2000,2000,2000],"body":[0,0,0,0,0,0,0],"bin size":[10,10,10,10,10,10,10],"ref point":["center","center","center","center","center","center","center"],"verbose":false,"bin avg type":"mean","missing data as zero":false,"min threshold":null,"max threshold":null,"scale":1,"skip zeros":false,"nan after end":false,"proc number":2,"sort regions":"keep","sort using":"mean","unscaled 5 prime":[0,0,0,0,0,0,0],"unscaled 3 prime":[0,0,0,0,0,0,0],"group_labels":["promoters_HFDdown_72","promoters_HFDup_70"],"group_boundaries":[0,72,142],"sample_labels":["Input_CD9","CD_average", "HFD_average", "DPN_average", "DIP_average", "E2_average", "PPT_average"],"sample_boundaries":[0,400,800,1200,1600,2000,2400,2800]}
+```
+
+#Same for enhancers. The following section is an exact copy of the promoter one, just with another input file. Note that the header is different from the promoter header.
+```{r}
+getwd()
+enhancer_plot_profile <- read.delim("results/Epigenome_analysis/DB_H3K27ac_broad_up_down_2181enh_2K",header=F)
+header <- enhancer_plot_profile[1,1]
+enhancer_plot_profile <- enhancer_plot_profile[2:nrow(enhancer_plot_profile),]
+```
+
+```{r}
+# Each file has 400 columns adjacent to each other.
+indices <- seq(7, ncol(enhancer_plot_profile), 400)
+identifiers1 <- enhancer_plot_profile[,1:6]
+names(identifiers1) <- c("V1", "V2", "V3", "locid", "V5", "V6")
+
+#This loop subsets the orginal matrix into each sample, and adds the gene identifiers
+matrix_list <- list()
+for (i in 1:19) {
+aaa <- (enhancer_plot_profile[, c(indices[i]:(indices[i]+399))]) 
+names(aaa) <- paste0("V", indices[i]:(indices[i]+399))
+matrix_list[[i]] <- cbind(identifiers1, aaa)
+
+}
+
+names(matrix_list) <- c("input", "CD2","CD6", "CD9", "HFD3", "HFD4","HFD6", "DPN2", "DPN3","DPN6", "DIP3", "DIP6", "DIP10", "E2_2", "E2_8", "E2_9", "PPT1", "PPT2", "PPT3")
+
+
+CD <- inner_join(matrix_list$CD2, inner_join(matrix_list$CD6, matrix_list$CD9, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+CD.2 <- CD %>% mutate(avg_V1 = rowMeans(subset(., select=c(V407, V807, V1207))))
+
+index.count <- c(407:806)
+length(index.count)
+
+CD.list <- list()
+for (i in 1:length(index.count)) {
+column_name <- paste0("Avg_V",index.count[i])
+CD.list[[i]] <- CD %>%
+  mutate(!!column_name := rowMeans(subset(CD, select=c(paste0("V",(index.count[i])),
+                                                                paste0("V",(index.count[i]+400)),
+                                                                paste0("V",(index.count[i]+800))))))  %>% dplyr::select(1207)
+}
+CD.merged <- do.call(cbind,CD.list) 
+CD.merged <- cbind(CD[,1:6], CD.merged)
+
+HFD <- inner_join(matrix_list$HFD3, inner_join(matrix_list$HFD4, matrix_list$HFD6, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+index.count <- c(1607:2006)
+length(index.count)
+HFD.list <- list()
+for (i in 1:length(index.count)) {
+column_name <- paste0("Avg_V",index.count[i])
+HFD.list[[i]] <- HFD %>%
+  mutate(!!column_name := rowMeans(subset(HFD, select=c(paste0("V",(index.count[i])),
+                                                                paste0("V",(index.count[i]+400)),
+                                                                paste0("V",(index.count[i]+800))))))  %>% dplyr::select(1207)
+}
+HFD.merged <- do.call(cbind,HFD.list) 
+HFD.merged <- cbind(HFD[,1:6], HFD.merged)
+
+DPN <- inner_join(matrix_list$DPN2, inner_join(matrix_list$DPN3, matrix_list$DPN6, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+index.count <- c(2807:3206)
+length(index.count)
+DPN.list <- list()
+for (i in 1:length(index.count)) {
+column_name <- paste0("Avg_V",index.count[i])
+DPN.list[[i]] <- DPN %>%
+  mutate(!!column_name := rowMeans(subset(DPN, select=c(paste0("V",(index.count[i])),
+                                                                paste0("V",(index.count[i]+400)),
+                                                                paste0("V",(index.count[i]+800))))))  %>% dplyr::select(1207)
+}
+DPN.merged <- do.call(cbind,DPN.list) 
+DPN.merged <- cbind(DPN[,1:6], DPN.merged)
+
+DIP <- inner_join(matrix_list$DIP3, inner_join(matrix_list$DIP6, matrix_list$DIP10, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+index.count <- c(4007:4406)
+length(index.count)
+DIP.list <- list()
+for (i in 1:length(index.count)) {
+column_name <- paste0("Avg_V",index.count[i])
+DIP.list[[i]] <- DIP %>%
+  mutate(!!column_name := rowMeans(subset(DIP, select=c(paste0("V",(index.count[i])),
+                                                                paste0("V",(index.count[i]+400)),
+                                                                paste0("V",(index.count[i]+800))))))  %>% dplyr::select(1207)
+}
+DIP.merged <- do.call(cbind,DIP.list) 
+DIP.merged <- cbind(DIP[,1:6], DIP.merged)
+
+E2 <- inner_join(matrix_list$E2_2, inner_join(matrix_list$E2_8, matrix_list$E2_9, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+index.count <- c(5207:5606)
+length(index.count)
+E2.list <- list()
+for (i in 1:length(index.count)) {
+column_name <- paste0("Avg_V",index.count[i])
+E2.list[[i]] <- E2 %>%
+  mutate(!!column_name := rowMeans(subset(E2, select=c(paste0("V",(index.count[i])),
+                                                                paste0("V",(index.count[i]+400)),
+                                                                paste0("V",(index.count[i]+800))))))  %>% dplyr::select(1207)
+}
+E2.merged <- do.call(cbind,E2.list) 
+E2.merged <- cbind(E2[,1:6], E2.merged)
+
+PPT <- inner_join(matrix_list$PPT1, inner_join(matrix_list$PPT2, matrix_list$PPT3, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+index.count <- c(6407:6806)
+length(index.count)
+PPT.list <- list()
+for (i in 1:length(index.count)) {
+column_name <- paste0("Avg_V",index.count[i])
+PPT.list[[i]] <- PPT %>%
+  mutate(!!column_name := rowMeans(subset(PPT, select=c(paste0("V",(index.count[i])),
+                                                                paste0("V",(index.count[i]+400)),
+                                                                paste0("V",(index.count[i]+800)))))) %>% dplyr::select(1207)
+}
+PPT.merged <- do.call(cbind,PPT.list) 
+PPT.merged <- cbind(PPT[,1:6], PPT.merged)
+
+promoter_plot_profile <- promoter_plot_profile %>% rename("locid"=V4)
+
+joined_matrix.promoters <- inner_join(promoter_plot_profile[,1:406], inner_join(CD.merged, inner_join(HFD.merged, inner_join(DPN.merged, inner_join(DIP.merged, inner_join(E2.merged, PPT.merged, by=c("V1", "V2", "V3", "locid", "V5", "V6")))))))
+ncol(joined_matrix.promoters)
+
+write.table(joined_matrix.promoters, file="results/Epigenome_analysis/merged_enhancers_replicates.mat", quote=F, col.names = F, row.names = F, sep="\t")
+
+# @{"upstream":[2000,2000,2000,2000,2000,2000,2000],"downstream":[2000,2000,2000,2000,2000,2000,2000],"body":[0,0,0,0,0,0,0],"bin size":[10,10,10,10,10,10,10],"ref point":["center","center","center","center","center","center","center"],"verbose":false,"bin avg type":"mean","missing data as zero":false,"min threshold":null,"max threshold":null,"scale":1,"skip zeros":false,"nan after end":false,"proc number":2,"sort regions":"keep","sort using":"mean","unscaled 5 prime":[0,0,0,0,0,0,0],"unscaled 3 prime":[0,0,0,0,0,0,0],"group_labels":["enhancers_HFD-down_681","enhancers_HFD-up_1500"],"group_boundaries":[0,681,2181],"sample_labels":["Input_CD9","CD_average", "HFD_average", "DPN_average", "DIP_average", "E2_average", "PPT_average"],"sample_boundaries":[0,400,800,1200,1600,2000,2400,2800]}
+```

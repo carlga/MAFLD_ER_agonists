@@ -1,3 +1,5 @@
+#!/usr/bin/env zsh
+
 #computematrices with DeepTools for all promoters and enhancers we identified. For promoters, each TSS has only one peak. For enhancers and promoters, the scaffolds were removed.
 
 bigwig_path="bigwig_files"
@@ -29,7 +31,7 @@ out_path=4_Metaplots_deeptools
   -R ${prom_enh_path}/promoters_HFDdown_72_anno.bed \
  ${prom_enh_path}/promoters_HFDup_70_anno.bed \
   -b 2000 -a 2000 \
-  --outFileName ${out_path}/231202_DB_H3K27ac_up_down_142prom_2K.gz -p 2
+  --outFileName ${out_path}/DB_H3K27ac_up_down_142prom_2K.gz -p 2
 
   # For the enhancers
   computeMatrix reference-point \
@@ -56,4 +58,4 @@ out_path=4_Metaplots_deeptools
    -R  ${prom_enh_path}/enhancers_HFDdown_681_anno.bed \
  ${prom_enh_path}/enhancers_HFDup_1500_anno.bed \
    -b 2000 -a 2000 \
-   --outFileName ${out_path}/231202_DB_H3K27ac_broad_up_down_2181enh_2K.gz -p 2
+   --outFileName ${out_path}/DB_H3K27ac_broad_up_down_2181enh_2K.gz -p 2
