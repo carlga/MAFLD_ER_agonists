@@ -1,27 +1,16 @@
-#!/bin/bash
-#Made by Jonas N. Søndergaard, adapted by CS
-#Made on 210715
-#UPPMAX commands (Uppsala Multidisciplinary Center for Advanced Computational Science)
-#SBATCH -A snic2020-15-291
-#SBATCH -p core
-#SBATCH -n 6
-#SBATCH -t 10:00:00
-#SBATCH -J 210715_Trimmomatic
-#SBATCH --output=210715_Trimmomatic.out
-#SBATCH --error=210715_Trimmomatic.err
-
 #load packages. bioinfo-tools is loaded on uppmax in order to load all other packages used.
 module load bioinfo-tools
 module load trimmomatic/0.36
 module load FastQC
 module load MultiQC
 
-#file paths
-FQ_PATH=
-OUTPUT_PATH=
+#file paths. change paths to according to your directory structure
 
-#loop to run Trimmomatic for 18 files
-for i in {1..18}; do \
+FQ_PATH= ~/FQ_PATH
+OUTPUT_PATH= ~/OUTPUT_PATH
+
+#loop to run Trimmomatic for 28 files
+for i in {1..28}; do \
 	FILE_NAME=`sed "${i}q;d" namelist`
 
 	java -jar $TRIMMOMATIC_HOME/trimmomatic.jar \
@@ -32,16 +21,17 @@ for i in {1..18}; do \
 		${OUTPUT_PATH}/${FILE_NAME}_trim.fastq.gz \
 		ILLUMINACLIP:$TRIMMOMATIC_HOME/adapters/TruSeq3-SE.fa:2:30:1 \
 		HEADCROP:4 \
+		CROP:60 \
+		MINLEN:30 \
 		>>${OUTPUT_PATH}/${FILE_NAME}.trimmomatic.stdout.stderr.txt 2>&1
 
      fastqc ${OUTPUT_PATH}/${FILE_NAME}_trim.fastq.gz
 done
 
-multiqc *zip
+multiqc ${OUTPUT_PATH}/*zip
 
 #README
-# LEADING AND TRAILING WERE REMOVED HERE
-#PE: reads are paired end
+#SE: reads are single end
 #-phred33: the quality pipeline used
 #ILLUMINACLIP: remove Illumina adapters
 #CROP: cut away all bases after this base # from the end of the read
