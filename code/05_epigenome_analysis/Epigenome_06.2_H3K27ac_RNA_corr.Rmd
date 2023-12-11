@@ -360,7 +360,7 @@ library(ggpubr)
           strip.background = element_rect(colour="black",
                                         fill="white")) +
     facet_wrap(vars(symbol, loc_ID), scales = "free", ncol=8) 
-  
+#ggsave("results/Appendix.pdf", width = 50, height=55, units="cm", limitsize=FALSE)  
 
 Acot_filt <- K27_GE_long_group_plot_filt %>% dplyr::filter(grepl("Acot", symbol))
 ggscatter(Acot_filt, x = "H3K27ac", y="Gene_expression", add = "reg.line",
@@ -374,6 +374,7 @@ ggscatter(Acot_filt, x = "H3K27ac", y="Gene_expression", add = "reg.line",
           strip.background = element_rect(colour="black",
                                         fill="white")) +
     facet_wrap(vars(symbol, loc_ID), scales="free", ncol=3) 
+#ggsave("results/FigEV4F.pdf", width = 20, height=12, units="cm")
 
 
 # plot Tead1
@@ -391,6 +392,7 @@ ggscatter(tead1, x = "H3K27ac", y="Gene_expression", add = "reg.line",
           strip.background = element_rect(colour="black",
                                         fill="white")) +
     facet_wrap(vars(symbol, loc_ID), scales="free", ncol=3) 
+#ggsave("results/Fig4B.pdf", width = 20, height=12, units="cm")
 ```
 
 # Plot histogram to show in which processes (of the 24 GSEA) the 45 genes fall into.
@@ -422,8 +424,6 @@ ggplot(intersect_pathways_symbols) +
   xlab("") +
   ylab("Gene count") +
   scale_y_continuous(limits = c(), breaks=c(0,2,4,6,8,10)) 
-
-ggsave("results/GO_plot_FigEV4E_1.pdf", width = 18, height=12, units="cm")
 ```
 
 
@@ -468,8 +468,6 @@ library(ggplot2)
     theme(text=element_text(size = 18)) +
     ggtitle("") + 
     xlab("")
-  
-ggsave("results/GO_plot_FigEV4E_2.pdf", width = 18, height=12, units="cm")
 ```
 
 ```{r}
