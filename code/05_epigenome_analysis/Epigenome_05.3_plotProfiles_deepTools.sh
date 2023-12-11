@@ -1,20 +1,28 @@
 #!/usr/bin/env zsh
 
-bigwig_path="bigwig_files"
-prom_enh_path=2.1_Peak_distribution_anno
-out_path=4_Metaplots_deeptools
+cd ../..
+matrix_path="results/Epigenome_analysis"
 
-gzip merged_promoters_replicates.mat
-gzip merged_enhancers_replicates.mat
+gzip ${matrix_path}/averaged_coverage_promoters.mat
+gzip ${matrix_path}/averaged_coverage_enhancers.mat
 
-plotProfile -m ${out_path}/merged_promoters_replicates.mat.gz \
---perGroup --colors black #88CCEE #332288 #DDCC77 #CC6677 #AA4499  #882255 \
- --plotHeight 10 --plotWidth 13 \
- -out ${out_path}/DB_H3K27ac_up_down_142prom_2K_merged_reps.pdf
+plotProfile -m ${matrix_path}/averaged_coverage_promoters.mat.gz \
+--perGroup --plotHeight 10 --plotWidth 18 \
+-out ${matrix_path}/H3K27ac_avg_coverage_142_promoters.pdf \
+--colors black "#88CCEE" "#332288" "#DDCC77" "#CC6677" "#AA4499" "#882255"
+
 
 # For the enhancers
+plotProfile -m ${matrix_path}/averaged_coverage_enhancers.mat.gz \
+--perGroup --plotHeight 10 --plotWidth 18 \
+-out ${matrix_path}/H3K27ac_avg_coverage_2181_enhancers.pdf \
+--colors black "#88CCEE" "#332288" "#DDCC77" "#CC6677" "#AA4499" "#882255"
 
-plotProfile -m ${out_path}/merged_enhancers_replicates.mat.gz \
---perGroup --colors black #88CCEE #332288 #DDCC77 #CC6677 #AA4499  #882255 \
- --plotHeight 10 --plotWidth 13 \
- -out ${out_path}/DB_H3K27ac_broad_up_down_2181enh_2K_merged_reps.pdf
+rm ${matrix_path}/DB_H3K27ac_broad_up_down_2181enh_2K_R.i*
+rm ${matrix_path}/DB_H3K27ac_up_down_142prom_2K_R.i*
+
+mkdir ${matrix_path}/Reads_in_peaks_analysis
+mv ${matrix_path}/*saf ${matrix_path}/Reads_in_peaks_analysis
+mv ${matrix_path}/*mat.gz ${matrix_path}/Reads_in_peaks_analysis
+mv ${matrix_path}/H3K27ac*.pdf ${matrix_path}/Reads_in_peaks_analysis
+mv ${matrix_path}/*readCount* ${matrix_path}/Reads_in_peaks_analysis

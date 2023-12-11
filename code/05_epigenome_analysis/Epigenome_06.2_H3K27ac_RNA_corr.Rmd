@@ -18,6 +18,7 @@ knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
 ```
 
 ```{r}
+getwd()
 library(tidyverse)
 ```
 
@@ -25,9 +26,10 @@ library(tidyverse)
 
 ```{r}
 #Import the closest genes as determined by 
-closest <- read.delim("results/Epigenome_analysis/origin_closest1_left_closest_1_2_right.bed", header=F)
-enhancer_ID <- c(1:1816)
-# Row 738 has an NA in several columns (including V8), remove this one as it causes issues downstream. This lowers the number of potential pairs.
+closest <- read.delim("results/Epigenome_analysis/Enhancer_Expression_correlation/origin_closest1_left_closest_1_2_right.bed", header=F)
+enhancer_ID <- c(1:2181)
+
+# Row 1, 451, 880, 1323, 2180 and 2181 have an NA in several columns (including V8), remove this one as it causes issues downstream. This lowers the number of potential pairs by 6.
 closest2 <- closest %>%
 separate(col = V3, into = c("V3_left", "V3_right"), sep = "\\|") %>%
 separate(col = V5, into = c("V5_left", "V5_right"), sep = "\\|") %>%
@@ -69,12 +71,10 @@ library("biomaRt")
 
 gr_closest_long <- makeGRangesFromDataFrame(closest_long,  start.field = "start", end.field = "end", ignore.strand = T,keep.extra.columns = T) 
 names(gr_closest_long) <- c(1:length(gr_closest_long))
-
-
 ```
 ## Annotate the TSS
 ```{r}
-listEnsemblArchives()
+#listEnsemblArchives()
 mart <- useMart(biomart = "ensembl", dataset = "mmusculus_gene_ensembl", host = "https://sep2019.archive.ensembl.org")
 annoDataMart <- getAnnotation(mart, featureType = "TSS")
 ```
@@ -150,7 +150,7 @@ chrom_TPM2 <- chrom_TPM %>%
 library(dplyr)
 library(tidyr)
 
-counts_enha <- counts_enha <- read.delim("231130_K4me3_H3K27ac_new_analysis/Results/231130_reads_in_peaks/DAc_enhancers_2181_H3K27ac.clean.readCount", header=T) %>% tibble::column_to_rownames("Geneid") %>%
+counts_enha <- read.delim("results/Epigenome_analysis/Reads_in_peaks_analysis/DAc_enhancers_2181_H3K27ac.clean.readCount", header=T) %>% tibble::column_to_rownames("Geneid") %>%
   dplyr::select("CK0744_H3K27ac_CD2", "CD6_H3K27ac_S2_R1_001", "CK0745_H3K27ac_CD9",
          "CK0746_H3K27ac_HFD3", "CK0747_H3K27ac_HFD4", "HFD6_H3K27ac_S8_R1_001", 
          "CK0748_H3K27ac_DPN2", "CK0749_H3K27ac_DPN3", "DPN6_H3K27ac_S15_R1_001",
@@ -210,7 +210,7 @@ K27_GE_long_group_plot_pearson <- K27_GE_long_group %>%
   filter(corr.sig.pearson < 0.01) %>% 
   group_by(loc_ID, query_ID) %>%
   mutate(name.ident = paste0(symbol, "_", loc_ID))
-nrow(K27_GE_long_group_plot_pearson)/18  # XXX enhancer gene pairs remain.
+nrow(K27_GE_long_group_plot_pearson)/18  # 589 enhancer gene pairs remain.
 write.table(K27_GE_long_group_plot_pearson, "Supplementary_tables/SupplementaryTable_step2_ESEG_genes_corr_pval_0.01.txt", quote=F, row.names=F, sep="\t")
 
 # Import the reverted gene set (n=379)
@@ -221,7 +221,7 @@ length(revALL)
 K27_GE_long_rev_insect <-  K27_GE_long_group_plot_pearson %>%
   filter(ensembl_gene_id %in% revALL)
 length(unique(K27_GE_long_rev_insect$ensembl_gene_id)) # XXX unique genes remain after filtering for reverted gene set.
-nrow(K27_GE_long_rev_insect)/18 # XXXX enhancer gene pairs remain after filtering
+nrow(K27_GE_long_rev_insect)/18 # 151 enhancer gene pairs remain after filtering
 
 write.table(K27_GE_long_rev_insect, "Supplementary_tables/SupplementaryTable_step3_ESEG_genes_corr_pval_0.01_reverted.txt", quote=F, row.names=F, sep="\t")
 ```
@@ -248,8 +248,8 @@ K27_GE_long_group_coordinates_right_export <- K27_GE_long_group_coordinates_righ
   dplyr::select("chrom", "new_start", "new_end", "loc_ID", "query_ID", "symbol") %>%
   unique()
 
-write.table(K27_GE_long_group_coordinates_left_export, "results/Epigenome_analysis/H3K27ac_left_non_intersect.bed", quote=F, row.names = F, sep="\t")
-write.table(K27_GE_long_group_coordinates_right_export, "results/Epigenome_analysis/H3K27ac_right_non_intersect.bed", quote=F, row.names=F, sep="\t")
+write.table(K27_GE_long_group_coordinates_left_export, "results/Epigenome_analysis/Enhancer_Expression_correlation/H3K27ac_left_non_intersect.bed", quote=F, row.names = F, sep="\t")
+write.table(K27_GE_long_group_coordinates_right_export, "results/Epigenome_analysis/Enhancer_Expression_correlation/H3K27ac_right_non_intersect.bed", quote=F, row.names=F, sep="\t")
 
 #From here, intersect the CTCF peaks with the exported H3K27ac regions using BEDtools (command line)
 ```
@@ -267,8 +267,8 @@ FIMO_CTCF_minus_bed <- FIMO_CTCF %>%
   dplyr::filter(strand=="-") %>%
   dplyr::select("chrom"="sequence_name", "start", "end"="stop", "strand")
 
-write.table(FIMO_CTCF_plus_bed, "results/Epigenome_analysis/fimo_mm10_genome_CTCF_plus.bed", quote=F, row.names = F, sep="\t")
-write.table(FIMO_CTCF_minus_bed, "results/Epigenome_analysis/fimo_mm10_genome_CTCF_minus.bed", quote=F, row.names = F, sep="\t")
+write.table(FIMO_CTCF_plus_bed, "results/Epigenome_analysis/Enhancer_Expression_correlation/fimo_mm10_genome_CTCF_plus.bed", quote=F, row.names = F, sep="\t")
+write.table(FIMO_CTCF_minus_bed, "results/Epigenome_analysis/Enhancer_Expression_correlation/fimo_mm10_genome_CTCF_minus.bed", quote=F, row.names = F, sep="\t")
 ```
 
 ###################################################################################################
@@ -282,13 +282,13 @@ HERE, RUN THE SHELL SCRIPT "Epigenome_06.03_CTCF_script_bedtools_enh_intersect.s
 library(tidyverse)
 
 names <- c("chrom", "start", "end", "loc_ID", "query_ID", "symbol")
-H3K27ac_left_CTCFx_outwards <- read.delim("results/Epigenome_analysis/H3K27ac_left_CTCF.intersect.noncanon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "outwards")
+H3K27ac_left_CTCFx_outwards <- read.delim("results/Epigenome_analysis/Enhancer_Expression_correlation/H3K27ac_left_CTCF.intersect.noncanon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "outwards")
 
-H3K27ac_left_CTCFx <- read.delim("results/Epigenome_analysis/H3K27ac_left_CTCF.intersect.canon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "canonical")
+H3K27ac_left_CTCFx <- read.delim("results/Epigenome_analysis/Enhancer_Expression_correlation/H3K27ac_left_CTCF.intersect.canon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "canonical")
 
-H3K27ac_right_CTCFx_outwards <- read.delim("results/Epigenome_analysis/H3K27ac_right_CTCF.intersect.noncanon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "outwards")
+H3K27ac_right_CTCFx_outwards <- read.delim("results/Epigenome_analysis/Enhancer_Expression_correlation/H3K27ac_right_CTCF.intersect.noncanon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "outwards")
 
-H3K27ac_right_CTCFx <- read.delim("results/Epigenome_analysis/H3K27ac_right_CTCF.intersect.canon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "canonical")
+H3K27ac_right_CTCFx <- read.delim("results/Epigenome_analysis/Enhancer_Expression_correlation/H3K27ac_right_CTCF.intersect.canon.uniq.bed", header=F, col.names = names) %>% mutate(CTCF_pos = "canonical")
 ```
 
 
@@ -296,15 +296,15 @@ H3K27ac_right_CTCFx <- read.delim("results/Epigenome_analysis/H3K27ac_right_CTCF
 ```{r}
 H3K27ac_CTCF_intersect <- rbind(H3K27ac_left_CTCFx_outwards, H3K27ac_left_CTCFx, H3K27ac_right_CTCFx_outwards, H3K27ac_right_CTCFx)
 table(H3K27ac_CTCF_intersect$CTCF_pos)
-length(unique(H3K27ac_CTCF_intersect$loc_ID)) # Some enhancers (= loc_IDs) are duplicated, XXXX unique ones.
+length(unique(H3K27ac_CTCF_intersect$loc_ID)) # Some enhancers (= loc_IDs) are duplicated due to multiple CTCF intersections, 76 unique ones.
 unique_symbols <- unique(H3K27ac_CTCF_intersect$symbol)
 length(unique_symbols)
-# XXXX unique genes that underlie potential enhancer-mediated estrogen-dependent regulation
+# 49 unique genes that may underlie enhancer-mediated estrogen-dependent regulation
 ```
 
 #Compare the fold-change values for these sites - in addition to the reads in peaks this gives information about how much these enhancers are changed
 ```{r}
-CDvsHFD_H3K27ac_Diffbind <- readRDS("results/Epigenome_analysis/Diffbind_results_FDR_fold.rds")$all_DB_peaks$K27_CDvsHFD %>%
+CDvsHFD_H3K27ac_Diffbind <- readRDS("results/Epigenome_analysis/DiffBind_annotated_peaks/Diffbind_results_FDR_fold.rds")$all_DB_peaks$K27_CDvsHFD %>%
  mutate(loc_ID = paste0(seqnames, ".",start,".",end), .before = seqnames) %>%
   dplyr::select(loc_ID, Fold, FDR) # Produce locIDs to match the ESEG IDs
 
@@ -333,52 +333,47 @@ K27_GE_long_group_plot_filt <- K27_GE_long_rev_insect %>%
   group_by(symbol, loc_ID) %>%
   mutate(name.ident = paste0(loc_ID, ":", symbol)) %>%
   filter(name.ident%in%H3K27ac_CTCF_intersect_log2FC_corr$name.ident)
-#write.table(K27_GE_long_group_plot_filt, "Supplementary_tables/SupplementaryTable_step4_ESEG_genes_corr_rev_CTCF.txt", row.names = F,  quote = F, sep="\t")
+write.table(K27_GE_long_group_plot_filt, "Supplementary_tables/SupplementaryTable_step4_ESEG_genes_corr_rev_CTCF.txt", row.names = F,  quote = F, sep="\t")
 
 K27_GE_long_group_plot_filt <- K27_GE_long_group_plot_filt[!duplicated(K27_GE_long_group_plot_filt), ]
 length(unique(K27_GE_long_group_plot_filt$symbol))
 
 # The following should yield "character(0)"
 setdiff(K27_GE_long_group_plot_filt$symbol, H3K27ac_CTCF_intersect_log2FC_corr$symbol)
-length(unique(K27_GE_long_group_plot_filt$symbol)) # XXX unique genes
-nrow(K27_GE_long_group_plot_filt)/18 # XXXX enhancer - gene pairs
-length(unique(K27_GE_long_group_plot_filt$loc_ID)) # XXXX unique enhancers
+length(unique(K27_GE_long_group_plot_filt$symbol)) # 49 unique genes
+nrow(K27_GE_long_group_plot_filt)/18 # 80 enhancer - gene pairs
+length(unique(K27_GE_long_group_plot_filt$loc_ID)) # 76 unique enhancers
 
-# 68 total combinations of location IDs and genes, one enhancer goes for two genes.
-
-#write.table(K27_GE_long_group_plot_filt, "results/Epigenome_analysis/corr_49genes_76enh_toPlot.txt", row.names = F,  quote = F, sep="\t")
+# 80 total combinations of location IDs and genes, one enhancer goes for two genes.
+write.table(K27_GE_long_group_plot_filt, "results/Epigenome_analysis/corr_49genes_76enh_toPlot.txt", row.names = F,  quote = F, sep="\t")
 ```
 
 ```{r}
 library(ggpubr)
   ggscatter(K27_GE_long_group_plot_filt, x = "H3K27ac", y="Gene_expression", add = "reg.line",
             shape=21,size=5, fill="name",alpha=0.8,
-            # yscale = "log2",
-            # xscale = "log2",
             xlab="H3K27ac",
             ylab="TPM",
-             palette=c("#88CCEE",  "#332288", "#DDCC77", "#CC6677", "#AA4499",  "#882255")) +
-    stat_cor(aes(label = ..r.label..),method="pearson",cor.coef.name = "r", p.digits=0, size=5, p.accuracy = 0.001) +
+             palette=c("#88CCEE", "#88CCEE", "#88CCEE",  "#CC6677", "#CC6677","#CC6677", "#DDCC77","#DDCC77","#DDCC77", "#AA4499", "#AA4499", "#AA4499", "#332288","#332288","#332288", "#882255",  "#882255",  "#882255")) +
     theme_bw() + 
     theme(axis.text = element_text(size=14),
           strip.background = element_rect(colour="black",
                                         fill="white")) +
     facet_wrap(vars(symbol, loc_ID), scales = "free", ncol=8) 
   
+
 Acot_filt <- K27_GE_long_group_plot_filt %>% dplyr::filter(grepl("Acot", symbol))
 ggscatter(Acot_filt, x = "H3K27ac", y="Gene_expression", add = "reg.line",
             shape=21,size=5, fill="name",alpha=0.8,
-            # yscale = "log2",
-            # xscale = "log2",
             xlab="H3K27ac",
             ylab="TPM",
-            palette=c("#88CCEE","#88CCEE", "#DDCC77", "#DDCC77", "#AA4499","#AA4499","#332288","#332288")) +
-    stat_cor(aes(label = ..r.label..),method="pearson", p.digits=0, size=5) +
+             palette=c("#88CCEE", "#88CCEE", "#88CCEE",  "#CC6677", "#CC6677","#CC6677", "#DDCC77","#DDCC77","#DDCC77", "#AA4499", "#AA4499", "#AA4499", "#332288","#332288","#332288", "#882255",  "#882255",  "#882255")) +
+    stat_cor(method="pearson", p.digits=0, size=4, cor.coef.name = "r") +
     theme_bw() + 
     theme(axis.text = element_text(size=14),
           strip.background = element_rect(colour="black",
                                         fill="white")) +
-    facet_wrap(vars(symbol, loc_ID), scales="free", ncol=4) 
+    facet_wrap(vars(symbol, loc_ID), scales="free", ncol=3) 
 
 
 # plot Tead1
@@ -387,17 +382,15 @@ tead1 <- K27_GE_long_group %>% dplyr::filter(symbol=="Tead1") %>% filter(!loc_ID
 #tead1_filt <- K27_GE_long_group_plot_filt %>% dplyr::filter(symbol=="Tead1")  # Plot this to only show E-G-pairs > 0.75
 ggscatter(tead1, x = "H3K27ac", y="Gene_expression", add = "reg.line",
             shape=21,size=5, fill="name",alpha=0.8,
-            # yscale = "log2",
-            # xscale = "log2",
             xlab="H3K27ac",
             ylab="TPM",
-            palette=c("#88CCEE","#88CCEE", "#DDCC77", "#DDCC77", "#AA4499","#AA4499","#332288","#332288")) +
-    stat_cor(aes(label = ..r.label..),method="pearson", p.digits=0, size=5) +
+            palette=c("#88CCEE", "#88CCEE", "#88CCEE",  "#CC6677", "#CC6677","#CC6677", "#DDCC77","#DDCC77","#DDCC77", "#AA4499", "#AA4499", "#AA4499", "#332288","#332288","#332288", "#882255",  "#882255",  "#882255")) +
+    stat_cor(method="pearson", p.digits=0, size=4, cor.coef.name = "r") +
     theme_bw() + 
     theme(axis.text = element_text(size=14),
           strip.background = element_rect(colour="black",
                                         fill="white")) +
-    facet_wrap(vars(symbol, loc_ID), scales="free", ncol=4) 
+    facet_wrap(vars(symbol, loc_ID), scales="free", ncol=3) 
 ```
 
 # Plot histogram to show in which processes (of the 24 GSEA) the 45 genes fall into.
@@ -429,6 +422,8 @@ ggplot(intersect_pathways_symbols) +
   xlab("") +
   ylab("Gene count") +
   scale_y_continuous(limits = c(), breaks=c(0,2,4,6,8,10)) 
+
+ggsave("results/GO_plot_FigEV4E_1.pdf", width = 18, height=12, units="cm")
 ```
 
 
@@ -474,7 +469,7 @@ library(ggplot2)
     ggtitle("") + 
     xlab("")
   
-#ggsave("results/GO_plot_FigS7D.pdf", width = 18, height=12, units="cm")
+ggsave("results/GO_plot_FigEV4E_2.pdf", width = 18, height=12, units="cm")
 ```
 
 ```{r}

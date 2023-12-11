@@ -1,0 +1,15 @@
+Status	data/files/BAMdata/H3K27ac/231127_CD6_H3K27ac_S2_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0744_H3K27ac_CD2_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0745_H3K27ac_CD9_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0746_H3K27ac_HFD3_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0747_H3K27ac_HFD4_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0748_H3K27ac_DPN2_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0749_H3K27ac_DPN3_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0750_H3K27ac_E2_8_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0751_H3K27ac_E2_9_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_DIP10_H3K27ac_S11_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_DIP3_H3K27ac_S9_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_DIP6_H3K27ac_S10_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_DPN6_H3K27ac_S15_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_E2_2_H3K27ac_S16_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_HFD6_H3K27ac_S8_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_PPT1_H3K27ac_S12_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_PPT2_H3K27ac_S13_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_PPT3_H3K27ac_S14_R1_001_psort_BL_fix_MkDup.bam
+Assigned	46318	86041	70757	106462	107337	80977	94120	81563	80605	45457	59274	58934	61073	66109	61854	52018	47855	54578
+Unassigned_Unmapped	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Read_Type	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Singleton	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_MappingQuality	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Chimera	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_FragmentLength	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Duplicate	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_MultiMapping	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Secondary	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_NonSplit	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_NoFeatures	12917472	22343762	19639768	20263444	21206842	20584917	22180550	18976381	19866901	12229433	13777222	14062841	14903243	14776467	13442700	12581242	13199936	13421374
+Unassigned_Overlapping_Length	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Ambiguity	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0

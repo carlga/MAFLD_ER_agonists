@@ -138,7 +138,7 @@ combined_allSites_anno$shortestDistance <- combined_allSites_anno$shortestDistan
 ggplot(combined_DBsites_anno)+
   geom_histogram(aes(x=log10(shortestDistance), fill=factor(element)), binwidth=0.1, color="black", size = 0.2) +
   theme_classic() +
-  scale_fill_manual("Diff-bound\nH3K27ac at", values = c("#235b95", "#73c6b6")) +
+  scale_fill_manual("DAc\nH3K27ac at", values = c("#235b95", "#73c6b6")) +
   theme(text=element_text(size=15)) +
   xlab("shortest distance to TSS (log10(bp))") 
   
@@ -147,8 +147,8 @@ ggplot(combined_allSites_anno)+
   theme_classic() +
   scale_fill_manual("All putative", values = c("#235b95", "#73c6b6")) +
   theme(text=element_text(size=15)) +
-    geom_vline(xintercept = log10(11200), color="#235b55") +
-  geom_vline(xintercept = log10(245), color="#235c10") +
+    geom_vline(xintercept = log10(10790), color="#235b55") +
+  geom_vline(xintercept = log10(224), color="#235c10") +
   xlab("shortest distance to TSS (log10(bp))") 
 ```
 # Make a stacked bar plot with the distances. 
@@ -183,15 +183,15 @@ enhancers_genomewide_anno_bins <- cut(peaks_annotated$enhancers_genomewide$short
                   labels=tags)
 
 set.seed(500)
-promoters_genomewide_anno_random_182 <- promoters_genomewide_anno[sample(nrow(promoters_genomewide_anno), size=182), ]
-promoters_genomewide_anno_random_182_bins <- cut(promoters_genomewide_anno_random_182$shortestDistance, 
+promoters_genomewide_anno_random_142 <- promoters_genomewide_anno[sample(nrow(promoters_genomewide_anno), size=142), ]
+promoters_genomewide_anno_random_142_bins <- cut(promoters_genomewide_anno_random_142$shortestDistance, 
                   breaks=breaks, 
                   include.lowest=TRUE, 
                   right=FALSE, 
                   labels=tags)
 
-enhancers_genomewide_anno_random_1816 <- enhancers_genomewide_anno[sample(nrow(enhancers_genomewide_anno), size=1816), ]
-promoters_genomewide_anno_random_1816_bins <- cut(enhancers_genomewide_anno_random_1816$shortestDistance, 
+enhancers_genomewide_anno_random_2181 <- enhancers_genomewide_anno[sample(nrow(enhancers_genomewide_anno), size=2181), ]
+promoters_genomewide_anno_random_2181_bins <- cut(enhancers_genomewide_anno_random_2181$shortestDistance, 
                   breaks=breaks, 
                   include.lowest=TRUE, 
                   right=FALSE, 
@@ -201,9 +201,9 @@ promoters_genomewide_anno_random_1816_bins <- cut(enhancers_genomewide_anno_rand
 summary_distance <- data.frame(prom_DB = summary(promoters_anno_bins),
            enha_DB = summary(enhancers_anno_bins),
            prom_all = summary(promoters_genomewide_anno_bins),
-           prom_all_sub = summary(promoters_genomewide_anno_random_182_bins),
+           prom_all_sub = summary(promoters_genomewide_anno_random_142_bins),
            enha_all = summary(enhancers_genomewide_anno_bins),
-           enha_all_sub = summary(promoters_genomewide_anno_random_1816_bins))
+           enha_all_sub = summary(promoters_genomewide_anno_random_2181_bins))
 
 # Getting the colsums for number of elements
 summary_distance.mat <- as.matrix(summary_distance)

@@ -1,3 +1,5 @@
+#!/usr/bin/env zsh
+
 #PROMOTERS
 #PROMOTERS
 #PROMOTERS
@@ -5,10 +7,10 @@
 #Determine all TSSs in CD and HFD - SPLIT FOR UP AND DOWN and all together
 
 # Replace this with the path to the github repository
-cd "~/Documents/GitHub/MAFLD_ER_agonists/05_epigenome_analysis"
+cd "../../"
 
 out_path="results/Epigenome_analysis"
-peak_path="data/Downloaded_from_Arrayexpress/Peakfiles"
+peak_path="data/files/Peak_calling_MACS2"
 diffbind_path="results/Epigenome_analysis"
 
 # All Peaks
@@ -325,7 +327,7 @@ bedtools merge -i ${out_path}/enh.4.genomewide.H3K27ac_all_xxx_H3K4me1_minus_K4m
 
 wc -l ${out_path}/*bed > ${out_path}/summary_file_rownumbers.txt
 awk '{gsub("results/Epigenome_analysis/", "");print}' ${out_path}/summary_file_rownumbers.txt > ${out_path}/summary_rownumbers.txt
-rm summary_file_rownumbers.txt
+rm ${out_path}/summary_file_rownumbers.txt
 
 mkdir ${out_path}/Intermediate_enhancer_files
 mkdir ${out_path}/Intermediate_promoter_files

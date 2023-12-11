@@ -7,7 +7,7 @@ cd ../../results/Epigenome_analysis
 awk 'NR==2' DAc_promoters_142_H3K27ac.readCount > Ugly.header
 
 #substitute unnecessary text. Please adapt this for the individual path.
-awk '{gsub("\\../old_new_fastq_combined/Mapping/H3K27ac/231127_", "");print}' Ugly.header > Ugly.header.2
+awk '{gsub("data/files/BAMdata/H3K27ac/231127_", "");print}' Ugly.header > Ugly.header.2
 awk '{gsub("_psort_BL_fix_MkDup.bam", "");print}' Ugly.header.2 > Nice.header
 
 #grab data without header
@@ -29,7 +29,7 @@ rm *.header*
 awk 'NR==2' DAc_enhancers_2181_H3K27ac.readCount > Ugly.header
 
 #substitute unnecessary text
-awk '{gsub("\\../old_new_fastq_combined/Mapping/H3K27ac/231127_", "");print}' Ugly.header > Ugly.header.2
+awk '{gsub("data/files/BAMdata/H3K27ac/231127_", "");print}' Ugly.header > Ugly.header.2
 awk '{gsub("_psort_BL_fix_MkDup.bam", "");print}' Ugly.header.2 > Nice.header
 
 #grab data without header

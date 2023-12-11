@@ -17,7 +17,7 @@ knitr::opts_knit$set(root.dir = path)
 knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
 ```
 
-# This script has two parts: 
+# This script has two parts:
 
 ### in Part 1, we use thr generated bed file with 182 diffbound promoters (one TSS per gene; the file after diffbind analysis still has multiple TSS per gene, 184 total). This bedfile is then converted into a SAF file using awk in command line. This SAF file, together with BAM files is used for featurecounts to generate a count matrix with all reads in these peak regions (this is analyzed on UPPMAX). The same is done for the 1,816 enhancer peaks.
 
@@ -31,7 +31,7 @@ knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
 awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' in.bed > out.saf
 
 #The saf file was then used to annotate the reads, all bam files (Remove duplicates, blocklist, sorted,..) were used.
-#subread version 2.0.0 was used. 
+#subread version 2.0.0 was used.
 
 Following featureCounts chunk was used:
 featureCounts \
@@ -53,14 +53,14 @@ the code was then uploaded to uppmax, features counted, then downloaded, finally
 
 # Part 2
 
-### Import the reads in peaks which was created using feature counts. Then, normalize the reads to do the analysis. Perform an Anova to compare significances between the conditions. 
+### Import the reads in peaks which was created using feature counts. Then, normalize the reads to do the analysis. Perform an Anova to compare significances between the conditions.
 
 #### First, for promoters.
 ```{r}
 library(tidyverse)
 counts_prom <- read.delim("results/Epigenome_analysis/DAc_promoters_142_H3K27ac.clean.readCount", header=T) %>% tibble::column_to_rownames("Geneid") %>%
-  select("CK0744_H3K27ac_CD2", "CD6_H3K27ac_S2_R1_001", "CK0745_H3K27ac_CD9",
-         "CK0746_H3K27ac_HFD3", "CK0747_H3K27ac_HFD4", "HFD6_H3K27ac_S8_R1_001", 
+  dplyr::select("CK0744_H3K27ac_CD2", "CD6_H3K27ac_S2_R1_001", "CK0745_H3K27ac_CD9",
+         "CK0746_H3K27ac_HFD3", "CK0747_H3K27ac_HFD4", "HFD6_H3K27ac_S8_R1_001",
          "CK0748_H3K27ac_DPN2", "CK0749_H3K27ac_DPN3", "DPN6_H3K27ac_S15_R1_001",
          "DIP3_H3K27ac_S9_R1_001",  "DIP6_H3K27ac_S10_R1_001", "DIP10_H3K27ac_S11_R1_001",
          "E2_2_H3K27ac_S16_R1_001", "CK0750_H3K27ac_E2_8", "CK0751_H3K27ac_E2_9",
@@ -70,12 +70,12 @@ names(counts_prom) <- c("CDm2","CDm6", "CDm9","HFDm3","HFDm4","HFDm6", "DPN2","D
 colsums_prom <- colSums(counts_prom[,])
 
 #normalise per depth
-counts_prom_norm <- sweep(counts_prom, 2, colsums_prom, FUN = "/") 
+counts_prom_norm <- sweep(counts_prom, 2, colsums_prom, FUN = "/")
 counts_prom_norm2 <- counts_prom_norm *10^6
 colSums(counts_prom_norm2[,])
 
 #Combine the replicates
-counts_prom_norm3 <- counts_prom_norm2 %>% 
+counts_prom_norm3 <- counts_prom_norm2 %>%
   mutate(avg_CD = rowMeans(counts_prom_norm2[,1:3])) %>%
   mutate(avg_HFD = rowMeans(counts_prom_norm2[,4:6])) %>%
   mutate(avg_DPN = rowMeans(counts_prom_norm2[,7:9])) %>%
@@ -84,12 +84,12 @@ counts_prom_norm3 <- counts_prom_norm2 %>%
   mutate(avg_PPT = rowMeans(counts_prom_norm2[,16:18])) %>%
   tibble::rownames_to_column("loc_ID")
 
-prom_enh_diffbound <- readRDS("results/Epigenome_analysis/annotated_diffbind_and_genomewide_promoters_enhancers.rds")
+prom_enh_diffbound <- readRDS("results/Epigenome_analysis/DiffBind_annotated_peaks/annotated_diffbind_and_genomewide_promoters_enhancers.rds")
 
 Prom_Diffbind_HFDup <- prom_enh_diffbound$promoters_HFDup %>% mutate("loc_ID" = paste0(seqnames, ".",start,".",end), .before = seqnames)
 Prom_Diffbind_HFDdown <- prom_enh_diffbound$promoters_HFDdown %>% mutate("loc_ID" = paste0(seqnames, ".",start,".",end), .before = seqnames)
 
-counts_prom_HFDup <- counts_prom_norm3 %>% filter(loc_ID%in%Prom_Diffbind_HFDup$loc_ID) %>% dplyr::select(1,20:25) 
+counts_prom_HFDup <- counts_prom_norm3 %>% filter(loc_ID%in%Prom_Diffbind_HFDup$loc_ID) %>% dplyr::select(1,20:25)
 
 
 counts_prom_HFDup2 <- counts_prom_HFDup %>%
@@ -118,10 +118,11 @@ counts_prom_HFD_plot$value <- counts_prom_HFD_plot$value+1
 #### Plot for promoters
 ```{r}
 order <- c("avg_CD", "avg_HFD", "avg_DPN","avg_DIP", "avg_E2", "avg_PPT")
-ggplot(counts_prom_HFD_plot, aes(x=factor(name, levels=order), y=log2(value), fill=updown)) +
+counts_prom_HFD_plot$updown <- factor(counts_prom_HFD_plot$updown, levels = c("HFDup", "HFDdown"))
+ggplot(counts_prom_HFD_plot, aes(x=factor(name, levels=order), y=log2(value), fill=factor(name, levels=order))) +
   geom_boxplot(alpha=0.8) +
   theme_classic() +
-  facet_wrap(vars(updown)) + 
+  facet_wrap(vars(updown)) +
   xlab("") +
   ggtitle("Promoters") +
   ylab("H3K27ac signal\n log2(normalized read count in \nDAc promoter peaks in CDvsHFD)") +
@@ -133,8 +134,8 @@ ggplot(counts_prom_HFD_plot, aes(x=factor(name, levels=order), y=log2(value), fi
 library(dplyr)
 library(tidyr)
 counts_enha <- read.delim("results/Epigenome_analysis/DAc_enhancers_2181_H3K27ac.clean.readCount", header=T) %>% tibble::column_to_rownames("Geneid") %>%
-  select("CK0744_H3K27ac_CD2", "CD6_H3K27ac_S2_R1_001", "CK0745_H3K27ac_CD9",
-         "CK0746_H3K27ac_HFD3", "CK0747_H3K27ac_HFD4", "HFD6_H3K27ac_S8_R1_001", 
+  dplyr::select("CK0744_H3K27ac_CD2", "CD6_H3K27ac_S2_R1_001", "CK0745_H3K27ac_CD9",
+         "CK0746_H3K27ac_HFD3", "CK0747_H3K27ac_HFD4", "HFD6_H3K27ac_S8_R1_001",
          "CK0748_H3K27ac_DPN2", "CK0749_H3K27ac_DPN3", "DPN6_H3K27ac_S15_R1_001",
          "DIP3_H3K27ac_S9_R1_001",  "DIP6_H3K27ac_S10_R1_001", "DIP10_H3K27ac_S11_R1_001",
          "E2_2_H3K27ac_S16_R1_001", "CK0750_H3K27ac_E2_8", "CK0751_H3K27ac_E2_9",
@@ -143,12 +144,12 @@ counts_enha <- read.delim("results/Epigenome_analysis/DAc_enhancers_2181_H3K27ac
 names(counts_enha) <-  c("CDm2","CDm6", "CDm9","HFDm3","HFDm4","HFDm6", "DPN2","DPN3","DPN6","DIP3","DIP6","DIP10","E2_2", "E2_8","E2_9", "PPT1","PPT2","PPT3")
 colsums_enha <- colSums(counts_enha[,])
 
-counts_enha_norm <- sweep(counts_enha, 2, colsums_enha, FUN = "/") 
+counts_enha_norm <- sweep(counts_enha, 2, colsums_enha, FUN = "/")
 counts_enha_norm2 <- counts_enha_norm *10^6
 colSums(counts_enha_norm2[,])
 
 #Combine the replicates
-counts_enha_norm3 <- counts_enha_norm2 %>% 
+counts_enha_norm3 <- counts_enha_norm2 %>%
   mutate(avg_CD = rowMeans(counts_enha_norm2[,1:3])) %>%
   mutate(avg_HFD = rowMeans(counts_enha_norm2[,4:6])) %>%
   mutate(avg_DPN = rowMeans(counts_enha_norm2[,7:9])) %>%
@@ -160,8 +161,8 @@ counts_enha_norm3 <- counts_enha_norm2 %>%
 Enha_Diffbind_HFDup <- prom_enh_diffbound$enhancers_HFDup %>% mutate("loc_ID" = paste0(seqnames, ".",start,".",end), .before = seqnames)
 Enha_Diffbind_HFDdown <- prom_enh_diffbound$enhancers_HFDdown %>% mutate("loc_ID" = paste0(seqnames, ".",start,".",end), .before = seqnames)
 
-counts_enha_HFDup <- counts_enha_norm3 %>% filter(loc_ID%in%Enha_Diffbind_HFDup$loc_ID) %>% dplyr::select(1,20:25) 
-counts_enha_HFDup2 <- counts_enha_HFDup %>% 
+counts_enha_HFDup <- counts_enha_norm3 %>% filter(loc_ID%in%Enha_Diffbind_HFDup$loc_ID) %>% dplyr::select(1,20:25)
+counts_enha_HFDup2 <- counts_enha_HFDup %>%
   pivot_longer(cols=2:7) %>% mutate("updown"= "HFDup")
 
 # STATISTICS - One-sided anova.
@@ -170,7 +171,7 @@ summary(res.aov.enha.HFDup.stat)
 res.aov.enha.HFDup.stat1 <- TukeyHSD(res.aov.enha.HFDup.stat)
 res.aov.enha.HFDup.stat2 <- res.aov.enha.HFDup.stat1$name
 
-counts_enha_HFDdown <- counts_enha_norm3 %>% filter(loc_ID%in%Enha_Diffbind_HFDdown$loc_ID) %>% dplyr::select(1,20:25) 
+counts_enha_HFDdown <- counts_enha_norm3 %>% filter(loc_ID%in%Enha_Diffbind_HFDdown$loc_ID) %>% dplyr::select(1,20:25)
 counts_enha_HFDdown2 <- counts_enha_HFDdown %>%
   pivot_longer(cols=2:7) %>% mutate("updown"="HFDdown")
 
@@ -185,17 +186,18 @@ counts_enha_HFD_plot$value <- counts_enha_HFD_plot$value+1
 ```
 #### Plot for enhancers
 ```{r}
-ggplot(counts_enha_HFD_plot, aes(x=factor(name, levels=order), y=log2(value), fill=updown)) +
+order <- c("avg_CD", "avg_HFD", "avg_DPN","avg_DIP", "avg_E2", "avg_PPT")
+counts_enha_HFD_plot$updown <- factor(counts_enha_HFD_plot$updown, levels = c("HFDup", "HFDdown"))
+ggplot(counts_enha_HFD_plot, aes(x=factor(name, levels=order), y=log2(value), fill=factor(name, levels=order))) +
   geom_boxplot(alpha=0.8) +
   theme_classic() +
   facet_wrap(vars(updown)) + 
   xlab("") +
   ggtitle("Enhancers") +
   ylab("H3K27ac signal\n log2(normalized read count in \nDAc enhancer peaks in CDvsHFD)") +
-   scale_fill_manual(values = c("#88CCEE",  "#332288", "#DDCC77", "#CC6677", "#AA4499",  "#882255"))
+  scale_fill_manual(values = c("#88CCEE",  "#332288", "#DDCC77", "#CC6677", "#AA4499",  "#882255"))
 ```
 
 ```{r}
 sessionInfo()
 ```
-

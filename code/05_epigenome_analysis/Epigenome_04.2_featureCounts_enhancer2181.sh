@@ -1,12 +1,10 @@
-
-#load packages. bioinfo-tools is loaded on uppmax in order to load all other packages used.
-module load bioinfo-tools
-module load subread/2.0.0
-
+#!/usr/bin/env zsh
+#Version subread/2.0.1
+cd ../../
 #file paths
-BAM_PATH="../old_new_fastq_combined/Mapping/H3K27ac"
-OUTPUT_PATH="."
-SAF_PATH="."
+BAM_PATH="data/files/BAMdata/H3K27ac"
+OUTPUT_PATH="results/Epigenome_analysis"
+SAF_PATH="results/Epigenome_analysis"
 
 #run featureCounts
 featureCounts \

@@ -1,0 +1,15 @@
+Status	data/files/BAMdata/H3K27ac/231127_CD6_H3K27ac_S2_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0744_H3K27ac_CD2_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0745_H3K27ac_CD9_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0746_H3K27ac_HFD3_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0747_H3K27ac_HFD4_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0748_H3K27ac_DPN2_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0749_H3K27ac_DPN3_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0750_H3K27ac_E2_8_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_CK0751_H3K27ac_E2_9_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_DIP10_H3K27ac_S11_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_DIP3_H3K27ac_S9_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_DIP6_H3K27ac_S10_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_DPN6_H3K27ac_S15_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_E2_2_H3K27ac_S16_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_HFD6_H3K27ac_S8_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_PPT1_H3K27ac_S12_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_PPT2_H3K27ac_S13_R1_001_psort_BL_fix_MkDup.bam	data/files/BAMdata/H3K27ac/231127_PPT3_H3K27ac_S14_R1_001_psort_BL_fix_MkDup.bam
+Assigned	10211	15731	12424	13727	14304	12205	13694	12569	12311	8875	11328	10770	11504	11983	9165	9614	9212	10495
+Unassigned_Unmapped	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Read_Type	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Singleton	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_MappingQuality	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Chimera	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_FragmentLength	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Duplicate	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_MultiMapping	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Secondary	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_NonSplit	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_NoFeatures	12953579	22414072	19698101	20356179	21299875	20653689	22260976	19045375	19935195	12266015	13825168	14111005	14952812	14830593	13495389	12623646	13238579	13465457
+Unassigned_Overlapping_Length	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Ambiguity	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0

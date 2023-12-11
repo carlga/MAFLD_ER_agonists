@@ -9,3 +9,9 @@ bed_path="../../results/Epigenome_analysis"
 
 awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${bed_path}/promoters_allDB_142_anno.bed > ${bed_path}/promoters_allDB_142_anno.saf
 awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' ${bed_path}/enhancers_allDB_2181_anno.bed > ${bed_path}/enhancers_allDB_2181_anno.saf
+
+mkdir ${bed_path}/DiffBind_annotated_peaks
+mkdir ${bed_path}/Bedfiles
+mv ${bed_path}/Diffbind_* ${bed_path}/DiffBind_annotated_peaks
+mv ${bed_path}/annotated_diffbind_and_genomewide_promoters_enhancers.rds ${bed_path}/DiffBind_annotated_peaks
+mv ${bed_path}/*anno.bed ${bed_path}/Bedfiles
