@@ -273,11 +273,21 @@ write.table(FIMO_CTCF_minus_bed, "results/Epigenome_analysis/Enhancer_Expression
 
 ###################################################################################################
 
-HERE, RUN THE SHELL SCRIPT "Epigenome_06.03_CTCF_script_bedtools_enh_intersect.sh"
+HERE, RUN THE SHELL SCRIPT "Epigenome_06.3_CTCF_enh_intersect_bedtools.sh"
 
 ###################################################################################################
 
 #after BEDTools intersection of H3K27ac enhancers (that have a good correlation with nearby genes) with nearby CTCF peaks, re-import
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-1):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+```
+
 ```{r}
 library(tidyverse)
 

@@ -35,7 +35,7 @@ promoter_plot_profile <- promoter_plot_profile[2:nrow(promoter_plot_profile),]
 # Each file has 6 identifier columns and followed by 400 columns adjacent to each other; each 400 columns corresponds for the 400 bins in each sample.
 indices <- seq(7, ncol(promoter_plot_profile), 400)
 identifiers1 <- promoter_plot_profile[,1:6]
-names(identifiers1) <- c("V1", "V2", "V3", "locid", "V5", "V6")
+names(identifiers1) <- c("V1", "V2", "V3", "V4", "V5", "V6")
 
 # This loop subsets the orginal matrix into each sample, and adds back the genomic location columns
 matrix_list <- list()
@@ -50,7 +50,7 @@ matrix_list[[i]] <- cbind(identifiers1, aaa)
 names(matrix_list) <- c("input", "CD2","CD6", "CD9", "HFD3", "HFD4","HFD6", "DPN2", "DPN3","DPN6", "DIP3", "DIP6", "DIP10", "E2_2", "E2_8", "E2_9", "PPT1", "PPT2", "PPT3")
 
 # Proof of principle for one sample and one columns. In the next section, we loop through all 400 columns per sample.
-CD <- inner_join(matrix_list$CD2, inner_join(matrix_list$CD6, matrix_list$CD9, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+CD <- inner_join(matrix_list$CD2, inner_join(matrix_list$CD6, matrix_list$CD9, by=c("V1", "V2", "V3", "V4", "V5", "V6"))) 
 CD.2 <- CD %>% mutate(avg_V1 = rowMeans(subset(., select=c(V407, V807, V1207))))
 
 # For each condition, we loop through the 400 bins. We work with an index vector, that is used to select the correct column intervals. The numbers in the index.count vector correspond to the columns of the first replicate, by adding 400 to it, we get the matching bins in the second replicate, and by adding 800 to this number, we get the columns of the third replicate.
@@ -69,7 +69,7 @@ CD.list[[i]] <- CD %>%
 CD.merged <- do.call(cbind,CD.list) 
 CD.merged <- cbind(CD[,1:6], CD.merged)
 
-HFD <- inner_join(matrix_list$HFD3, inner_join(matrix_list$HFD4, matrix_list$HFD6, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+HFD <- inner_join(matrix_list$HFD3, inner_join(matrix_list$HFD4, matrix_list$HFD6, by=c("V1", "V2", "V3", "V4", "V5", "V6"))) 
 index.count <- c(1607:2006)
 length(index.count)
 HFD.list <- list()
@@ -83,7 +83,7 @@ HFD.list[[i]] <- HFD %>%
 HFD.merged <- do.call(cbind,HFD.list) 
 HFD.merged <- cbind(HFD[,1:6], HFD.merged)
 
-DPN <- inner_join(matrix_list$DPN2, inner_join(matrix_list$DPN3, matrix_list$DPN6, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+DPN <- inner_join(matrix_list$DPN2, inner_join(matrix_list$DPN3, matrix_list$DPN6, by=c("V1", "V2", "V3", "V4", "V5", "V6"))) 
 index.count <- c(2807:3206)
 length(index.count)
 DPN.list <- list()
@@ -97,7 +97,7 @@ DPN.list[[i]] <- DPN %>%
 DPN.merged <- do.call(cbind,DPN.list) 
 DPN.merged <- cbind(DPN[,1:6], DPN.merged)
 
-DIP <- inner_join(matrix_list$DIP3, inner_join(matrix_list$DIP6, matrix_list$DIP10, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+DIP <- inner_join(matrix_list$DIP3, inner_join(matrix_list$DIP6, matrix_list$DIP10, by=c("V1", "V2", "V3", "V4", "V5", "V6"))) 
 index.count <- c(4007:4406)
 length(index.count)
 DIP.list <- list()
@@ -111,7 +111,7 @@ DIP.list[[i]] <- DIP %>%
 DIP.merged <- do.call(cbind,DIP.list) 
 DIP.merged <- cbind(DIP[,1:6], DIP.merged)
 
-E2 <- inner_join(matrix_list$E2_2, inner_join(matrix_list$E2_8, matrix_list$E2_9, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+E2 <- inner_join(matrix_list$E2_2, inner_join(matrix_list$E2_8, matrix_list$E2_9, by=c("V1", "V2", "V3", "V4", "V5", "V6"))) 
 index.count <- c(5207:5606)
 length(index.count)
 E2.list <- list()
@@ -125,7 +125,7 @@ E2.list[[i]] <- E2 %>%
 E2.merged <- do.call(cbind,E2.list) 
 E2.merged <- cbind(E2[,1:6], E2.merged)
 
-PPT <- inner_join(matrix_list$PPT1, inner_join(matrix_list$PPT2, matrix_list$PPT3, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+PPT <- inner_join(matrix_list$PPT1, inner_join(matrix_list$PPT2, matrix_list$PPT3, by=c("V1", "V2", "V3", "V4", "V5", "V6"))) 
 index.count <- c(6407:6806)
 length(index.count)
 PPT.list <- list()
@@ -140,9 +140,7 @@ PPT.merged <- do.call(cbind,PPT.list)
 PPT.merged <- cbind(PPT[,1:6], PPT.merged)
 
 # Lastly, join together all the individual conditions in the correct order. The input sample is simply taken from the original matrix.
-
-promoter_plot_profile <- promoter_plot_profile %>% rename("locid"=V4)
-joined_matrix.promoters <- inner_join(promoter_plot_profile[,1:406], inner_join(CD.merged, inner_join(HFD.merged, inner_join(DPN.merged, inner_join(DIP.merged, inner_join(E2.merged, PPT.merged, by=c("V1", "V2", "V3", "locid", "V5", "V6")))))))
+joined_matrix.promoters <- inner_join(promoter_plot_profile[,1:406], inner_join(CD.merged, inner_join(HFD.merged, inner_join(DPN.merged, inner_join(DIP.merged, inner_join(E2.merged, PPT.merged, by=c("V1", "V2", "V3", "V4", "V5", "V6")))))))
 ncol(joined_matrix.promoters)
 
 write.table(joined_matrix.promoters, file="results/Epigenome_analysis/averaged_coverage_promoters.mat", quote=F, col.names = F, row.names = F, sep="\t")
@@ -165,7 +163,7 @@ enhancer_plot_profile <- enhancer_plot_profile[2:nrow(enhancer_plot_profile),]
 # Each file has 400 columns adjacent to each other.
 indices <- seq(7, ncol(enhancer_plot_profile), 400)
 identifiers1 <- enhancer_plot_profile[,1:6]
-names(identifiers1) <- c("V1", "V2", "V3", "locid", "V5", "V6")
+names(identifiers1) <- c("V1", "V2", "V3", "V4", "V5", "V6")
 
 #This loop subsets the orginal matrix into each sample, and adds the gene identifiers
 matrix_list <- list()
@@ -179,7 +177,7 @@ matrix_list[[i]] <- cbind(identifiers1, aaa)
 names(matrix_list) <- c("input", "CD2","CD6", "CD9", "HFD3", "HFD4","HFD6", "DPN2", "DPN3","DPN6", "DIP3", "DIP6", "DIP10", "E2_2", "E2_8", "E2_9", "PPT1", "PPT2", "PPT3")
 
 
-CD <- inner_join(matrix_list$CD2, inner_join(matrix_list$CD6, matrix_list$CD9, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+CD <- inner_join(matrix_list$CD2, inner_join(matrix_list$CD6, matrix_list$CD9, by=c("V1", "V2", "V3", "V4", "V5", "V6"))) 
 CD.2 <- CD %>% mutate(avg_V1 = rowMeans(subset(., select=c(V407, V807, V1207))))
 
 index.count <- c(407:806)
@@ -196,7 +194,7 @@ CD.list[[i]] <- CD %>%
 CD.merged <- do.call(cbind,CD.list) 
 CD.merged <- cbind(CD[,1:6], CD.merged)
 
-HFD <- inner_join(matrix_list$HFD3, inner_join(matrix_list$HFD4, matrix_list$HFD6, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+HFD <- inner_join(matrix_list$HFD3, inner_join(matrix_list$HFD4, matrix_list$HFD6, by=c("V1", "V2", "V3", "V4", "V5", "V6"))) 
 index.count <- c(1607:2006)
 length(index.count)
 HFD.list <- list()
@@ -210,7 +208,7 @@ HFD.list[[i]] <- HFD %>%
 HFD.merged <- do.call(cbind,HFD.list) 
 HFD.merged <- cbind(HFD[,1:6], HFD.merged)
 
-DPN <- inner_join(matrix_list$DPN2, inner_join(matrix_list$DPN3, matrix_list$DPN6, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+DPN <- inner_join(matrix_list$DPN2, inner_join(matrix_list$DPN3, matrix_list$DPN6, by=c("V1", "V2", "V3", "V4", "V5", "V6"))) 
 index.count <- c(2807:3206)
 length(index.count)
 DPN.list <- list()
@@ -224,7 +222,7 @@ DPN.list[[i]] <- DPN %>%
 DPN.merged <- do.call(cbind,DPN.list) 
 DPN.merged <- cbind(DPN[,1:6], DPN.merged)
 
-DIP <- inner_join(matrix_list$DIP3, inner_join(matrix_list$DIP6, matrix_list$DIP10, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+DIP <- inner_join(matrix_list$DIP3, inner_join(matrix_list$DIP6, matrix_list$DIP10, by=c("V1", "V2", "V3", "V4", "V5", "V6"))) 
 index.count <- c(4007:4406)
 length(index.count)
 DIP.list <- list()
@@ -238,7 +236,7 @@ DIP.list[[i]] <- DIP %>%
 DIP.merged <- do.call(cbind,DIP.list) 
 DIP.merged <- cbind(DIP[,1:6], DIP.merged)
 
-E2 <- inner_join(matrix_list$E2_2, inner_join(matrix_list$E2_8, matrix_list$E2_9, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+E2 <- inner_join(matrix_list$E2_2, inner_join(matrix_list$E2_8, matrix_list$E2_9, by=c("V1", "V2", "V3", "V4", "V5", "V6"))) 
 index.count <- c(5207:5606)
 length(index.count)
 E2.list <- list()
@@ -252,7 +250,7 @@ E2.list[[i]] <- E2 %>%
 E2.merged <- do.call(cbind,E2.list) 
 E2.merged <- cbind(E2[,1:6], E2.merged)
 
-PPT <- inner_join(matrix_list$PPT1, inner_join(matrix_list$PPT2, matrix_list$PPT3, by=c("V1", "V2", "V3", "locid", "V5", "V6"))) 
+PPT <- inner_join(matrix_list$PPT1, inner_join(matrix_list$PPT2, matrix_list$PPT3, by=c("V1", "V2", "V3", "V4", "V5", "V6"))) 
 index.count <- c(6407:6806)
 length(index.count)
 PPT.list <- list()
@@ -266,9 +264,7 @@ PPT.list[[i]] <- PPT %>%
 PPT.merged <- do.call(cbind,PPT.list) 
 PPT.merged <- cbind(PPT[,1:6], PPT.merged)
 
-enhancer_plot_profile <- enhancer_plot_profile %>% rename("locid"=V4)
-
-joined_matrix.enhancers <- inner_join(enhancer_plot_profile[,1:406], inner_join(CD.merged, inner_join(HFD.merged, inner_join(DPN.merged, inner_join(DIP.merged, inner_join(E2.merged, PPT.merged, by=c("V1", "V2", "V3", "locid", "V5", "V6")))))))
+joined_matrix.enhancers <- inner_join(enhancer_plot_profile[,1:406], inner_join(CD.merged, inner_join(HFD.merged, inner_join(DPN.merged, inner_join(DIP.merged, inner_join(E2.merged, PPT.merged, by=c("V1", "V2", "V3", "V4", "V5", "V6")))))))
 ncol(joined_matrix.enhancers)
 
 write.table(joined_matrix.enhancers, file="results/Epigenome_analysis/averaged_coverage_enhancers.mat", quote=F, col.names = F, row.names = F, sep="\t")

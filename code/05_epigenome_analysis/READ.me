@@ -1,0 +1,103 @@
+Epigenome analysis READ.me
+
+Run all the scripts in order. They are a mixture of R scripts and shell scripts.
+For the shell/conda environment, the following tools are necessary and need to be loaded:
+- BEDOPS (version 2.4.41 )
+- bedtools (version 2.30.0)
+- deepTools (version 3.5.1)
+- subRead (version 2.0.1)
+
+All shell scripts are executable and can be run in the command line via "sh script.sh"
+The folder structure in the 'results/Epigenome_analysis' folder are created automatically.
+The resulting files are moved into these folder automatically as well.
+
+Notes to specific scripts:
+Script Epigenome_5.2_merging_computematrices.Rmd outputs two matrices. However, before proceeding to the next script,
+it is necessary that the user copies the headers into these two output files. The headers are commented at
+the end of the respective sections for promoters and enhancers in Epigenome_5.2_merging_computematrices.Rmd.
+To copy the headers in, open the output files 'averaged_coverage_enhancers.mat' 'averaged_coverage_promoters.mat'
+in a text editor, and copy the header into the first row, save and close the file.
+
+Script 'Epigenome_06.2_H3K27ac_RNA_corr.Rmd' is to be run in three steps.
+First, it is run until the middle of the script (indicated in the script)
+Then running 'Epigenome_6.3_CTCF_enh_intersect_bedtools.sh' is required (Note: you can use the terminal within RStudio, for convenience)
+Lastly, continue running the second half of 'Epigenome_06.2_H3K27ac_RNA_corr.Rmd'.
+
+Conda environment content:
+
+# Name                    Version                   Build  Channel
+bedops                    2.4.41               hcd10b59_0    bioconda
+bedtools                  2.30.0               haa7f73a_2    bioconda
+blas                      1.0                         mkl
+brotli                    1.0.9                hca72f7f_7
+brotli-bin                1.0.9                hca72f7f_7
+bzip2                     1.0.8                h1de35cc_0
+c-ares                    1.18.1               hca72f7f_0
+ca-certificates           2023.08.22           hecd8cb5_0
+certifi                   2022.12.7        py37hecd8cb5_0
+curl                      7.85.0               hca72f7f_0
+cycler                    0.11.0             pyhd3eb1b0_0
+deeptools                 3.5.1                      py_0    bioconda
+deeptoolsintervals        0.1.9            py37h01d97ff_0    bioconda
+fftw                      3.3.9                h9ed2024_1
+fonttools                 4.25.0             pyhd3eb1b0_0
+freetype                  2.12.1               hd8bbffd_0
+giflib                    5.2.1                haf1e3a3_0
+intel-openmp              2021.4.0          hecd8cb5_3538
+jpeg                      9e                   hca72f7f_0
+kiwisolver                1.4.2            py37he9d5cce_0
+krb5                      1.19.2               hcd88c3b_0
+lcms2                     2.12                 hf1fd2bf_0
+libbrotlicommon           1.0.9                hca72f7f_7
+libbrotlidec              1.0.9                hca72f7f_7
+libbrotlienc              1.0.9                hca72f7f_7
+libcurl                   7.85.0               h6dfd666_0
+libcxx                    14.0.6               h9765a3e_0
+libdeflate                1.0                  h1de35cc_1    bioconda
+libedit                   3.1.20210910         hca72f7f_0
+libev                     4.33                 h9ed2024_1
+libffi                    3.2.1                         1    bioconda
+libgfortran               5.0.0           11_3_0_hecd8cb5_28
+libgfortran5              11.3.0              h9dfd629_28
+libnghttp2                1.46.0               ha29bfda_0
+libpng                    1.6.37               ha441bb4_0
+libssh2                   1.10.0               h0a4fc7d_0
+libtiff                   4.2.0                h2ef1027_2
+libwebp                   1.2.4                h56c3ce4_0
+libwebp-base              1.2.4                hca72f7f_0
+llvm-openmp               14.0.6               h0dcd299_0
+lz4-c                     1.9.3                h23ab428_1
+matplotlib-base           3.5.3            py37hfb0c5b7_0
+mkl                       2021.4.0           hecd8cb5_637
+mkl-service               2.4.0            py37h9ed2024_0
+mkl_fft                   1.3.1            py37h4ab4a9b_0
+mkl_random                1.2.2            py37hb2f4e1b_0
+munkres                   1.0.7                      py_1    bioconda
+ncurses                   6.3                  hca72f7f_3
+numpy                     1.21.5           py37h2e5f0a9_3
+numpy-base                1.21.5           py37h3b1a694_3
+openssl                   1.1.1w               hca72f7f_0
+packaging                 21.3               pyhd3eb1b0_0
+pillow                    9.2.0            py37hde71d04_1
+pip                       22.2.2           py37hecd8cb5_0
+plotly                    5.9.0            py37hecd8cb5_0
+py2bit                    0.3.0            py37h1de35cc_2    bioconda
+pybigwig                  0.3.17           py37haec6b85_0    bioconda
+pyparsing                 3.0.9            py37hecd8cb5_0
+pysam                     0.15.3           py37h726f235_1    bioconda
+python                    3.7.7           hc70fcce_0_cpython
+python-dateutil           2.8.2              pyhd3eb1b0_0
+readline                  8.2                  hca72f7f_0
+samtools                  1.4.1                         0    bioconda
+scipy                     1.7.3            py37h214d14d_2
+setuptools                65.5.0           py37hecd8cb5_0
+six                       1.16.0             pyhd3eb1b0_1
+sqlite                    3.39.3               h707629a_0
+subread                   2.0.1                h188c3c3_1    bioconda
+tenacity                  8.0.1            py37hecd8cb5_1
+tk                        8.6.12               h5d9f67b_0
+typing_extensions         4.3.0            py37hecd8cb5_0
+wheel                     0.37.1             pyhd3eb1b0_0
+xz                        5.2.6                hca72f7f_0
+zlib                      1.2.13               h4dc903c_0
+zstd                      1.5.2                hcb37349_0

@@ -1,0 +1,89 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+# set path
+path <- strsplit(dirname(rstudioapi::getActiveDocumentContext()$path), '/')[[1]]
+path <- path[-c((length(path)-1):length(path))]
+path <- paste(path, collapse = '/')
+knitr::opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
+```
+
+```{r}
+library(tidyverse)
+library(stringr)
+
+# Download the txt file GSE155153_ZT0All_step2_washU_text.txt.gz from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE155153 and load it into R.
+input <- read.delim("data/Promoter_Capture_HiC/GSE155153_ZT0All_step2_washU_text_DOWNLOADED_FROM_GEO.txt", header=F)
+```
+# To be uploaded at UCSC
+```{r}
+# Modify the file for UCSC assembly tool conversion. 
+input2 <- input %>% separate(col = V1, into = c("chrom", "chromStart", "chromEnd"), sep = ",") %>%
+                    mutate("name" = paste0("ident_", row_number()), .before=V2) %>%
+                    mutate("score" = round(V3)) %>%
+                    mutate("value" = "0") %>%
+                    mutate("exp" = "exp") %>%
+                    mutate("color" = "#cccccc") %>%
+                    mutate("sourceChrom" = chrom) %>%
+                    mutate("sourceStart" = chromStart) %>%
+                    mutate("sourceEnd" = chromEnd) %>%
+                    mutate("sourceName" = paste0("ident_", row_number())) %>%
+                    mutate("sourceStrand" = ".") %>%
+                    separate(col = V2, into = c("targetChrom", "targetStart", "targetEnd"), sep = ",") %>%  
+                    mutate("targetName" = paste0("ident_", row_number())) %>% # We need an identifier here so we can match the target and source coordinates later on, as we have to lift over separately for source and target
+                    mutate("targetStrand" = ".") %>%
+                    dplyr::select(chrom, chromStart, chromEnd, name, score, value, exp, color, sourceChrom, sourceStart, sourceEnd, sourceName, sourceStrand, targetChrom,  targetStart,  targetEnd, targetName,  targetStrand )
+
+#write.table(input2, "GSE155153_ZT0All_step2_UCSC1.txt", quote=F, row.names = F, sep="\t")
+
+# Have to lift over all the coordinates first. --> need identifier.
+input_source <- input2 %>% dplyr::select(1:5)
+#write.table(input_source, "6_CaptureHiC_GSE155153/GSE155153_ZT0All_step2_UCSC_sourcemm9.txt", quote=F, row.names = F, sep="\t")
+
+input_target <- input2 %>% dplyr::select(14:18)
+#write.table(input_target, "6_CaptureHiC_GSE155153/GSE155153_ZT0All_step2_UCSC_targetmm9.txt", quote=F, row.names = F, sep="\t")
+
+# Try a format like this: #chrom  chromStart  chromEnd  name  score  value  exp  color  sourceChrom  sourceStart  sourceEnd  sourceName  sourceStrand  targetChrom  targetStart  targetEnd  targetName  targetStrand
+
+head(input2)
+```
+
+# USE THE UCSC ASSEMBLY TOOL @ https://genome.ucsc.edu/cgi-bin/hgLiftOver . Copy in the content of the two txt files, delete the header so the tool accepts the input. Download the resulting file, rename and import here. Might have to paste the headers back. Some sites may be lost due to conversionsm problems.
+
+```{r}
+import_mm10_source <- read.delim("data/Promoter_Capture_HiC/GSE155153_ZT0All_step2_UCSC_assembly_tool_sourcemm10.bed", header=F) %>%
+  mutate(sourceChrom = paste0("chr", V1)) %>% dplyr::select(sourceChrom, sourceStart=V2, sourceEnd=V3, name=V4, sourceStrand=V5)
+
+import_mm10_source <- import_mm10_source[!(duplicated(import_mm10_source$name)),]
+
+import_mm10_target <- read.delim("data/Promoter_Capture_HiC/GSE155153_ZT0All_step2_UCSC_assembly_tool_targetmm10.bed", header=F) %>%
+  mutate(targetChrom = paste0("chr", V1)) %>% dplyr::select(targetChrom, targetStart=V2, targetEnd=V3, name=V4, targetStrand=V5)
+
+
+length(unique(import_mm10_target$name))
+
+import_mm10_target <- import_mm10_target[!(duplicated(import_mm10_target$name)),]
+import_mm10 <- inner_join(import_mm10_source, import_mm10_target, by= "name")
+
+import_mm10_2 <- import_mm10 %>% 
+  mutate(chrom = sourceChrom, .before = sourceChrom) %>% 
+  mutate(chromStart = sourceStart, .before = sourceChrom) %>% 
+  mutate(chromEnd = sourceEnd, .before = sourceChrom) %>% 
+  mutate("Name" = name, .before = sourceChrom) %>%
+  mutate("score" = sourceStrand, .before = sourceChrom) %>%
+  mutate("value" = "0", .before = sourceChrom) %>%
+  mutate("exp" = "exp", .before = sourceChrom) %>%
+  mutate("color" = "#000000", .before = sourceChrom) %>%
+  mutate(targetName = name, .before = targetStrand)
+
+import_mm10_2$sourceStrand <- "."
+head(import_mm10_2)
+#write.table(import_mm10_2, "data/Promoter_Capture_HiC/GSE155153_ZT0All_step2_UCSC_mm10_merged.txt", sep="\t", quote=F, row.names=F)
+```
+
+

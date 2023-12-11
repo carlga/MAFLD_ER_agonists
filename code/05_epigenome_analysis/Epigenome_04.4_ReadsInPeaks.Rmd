@@ -17,43 +17,6 @@ knitr::opts_knit$set(root.dir = path)
 knitr::opts_chunk$set(echo = T, message = F, warning = F, dev = 'png')
 ```
 
-# This script has two parts:
-
-### in Part 1, we use thr generated bed file with 182 diffbound promoters (one TSS per gene; the file after diffbind analysis still has multiple TSS per gene, 184 total). This bedfile is then converted into a SAF file using awk in command line. This SAF file, together with BAM files is used for featurecounts to generate a count matrix with all reads in these peak regions (this is analyzed on UPPMAX). The same is done for the 1,816 enhancer peaks.
-
-### in Part 2, we import this count matrix into R again, normalize it, calculate significances and generate the plots.
-
-
-# Part 1
-```{bash, eval = FALSE}
-#The enhancer and promoter (with unique TSS, generated in the chunk above) bed files were used to create a saf file using the following command:
-
-awk 'OFS="\t" {print $1"."$2"."$3, $1, $2, $3, "."}' in.bed > out.saf
-
-#The saf file was then used to annotate the reads, all bam files (Remove duplicates, blocklist, sorted,..) were used.
-#subread version 2.0.0 was used.
-
-Following featureCounts chunk was used:
-featureCounts \
-        -g gene_id \
-        -s 2 \
-        -T 2 \
-        -M \
-        -F SAF \
-        -O \
-        -C \
-        -a ${SAF_PATH}/example.saf  \
-        -o ${OUTPUT_PATH}/example.readCount \
-        ${BAM_PATH}/*H3K27ac*MkDup.bam \
-        &> ${OUTPUT_PATH}/example.readCount.log
-
-the code was then uploaded to uppmax, features counted, then downloaded, finally the header cleaned up (using the bash clean header script).
-```
-
-
-# Part 2
-
-### Import the reads in peaks which was created using feature counts. Then, normalize the reads to do the analysis. Perform an Anova to compare significances between the conditions.
 
 #### First, for promoters.
 ```{r}

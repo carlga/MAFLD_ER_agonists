@@ -3,7 +3,7 @@
 #computematrices with DeepTools for all promoters and enhancers we identified. For promoters, each TSS has only one peak. For enhancers and promoters, the scaffolds were removed.
 cd ../..
 bigwig_path="data/files/Bigwig"
-prom_enh_path="results/Epigenome_analysis"
+prom_enh_path="results/Epigenome_analysis/Bedfiles"
 out_path="results/Epigenome_analysis"
 
   #For the promoters
