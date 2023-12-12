@@ -7,14 +7,14 @@ gzip ${matrix_path}/averaged_coverage_promoters.mat
 gzip ${matrix_path}/averaged_coverage_enhancers.mat
 
 plotProfile -m ${matrix_path}/averaged_coverage_promoters.mat.gz \
---perGroup --plotHeight 10 --plotWidth 18 \
+--perGroup --plotHeight 10 --plotWidth 12 \
 -out ${matrix_path}/H3K27ac_avg_coverage_142_promoters.pdf \
 --colors black "#88CCEE" "#332288" "#DDCC77" "#CC6677" "#AA4499" "#882255"
 
 
 # For the enhancers
 plotProfile -m ${matrix_path}/averaged_coverage_enhancers.mat.gz \
---perGroup --plotHeight 10 --plotWidth 18 \
+--perGroup --plotHeight 10 --plotWidth 12 \
 -out ${matrix_path}/H3K27ac_avg_coverage_2181_enhancers.pdf \
 --colors black "#88CCEE" "#332288" "#DDCC77" "#CC6677" "#AA4499" "#882255"
 

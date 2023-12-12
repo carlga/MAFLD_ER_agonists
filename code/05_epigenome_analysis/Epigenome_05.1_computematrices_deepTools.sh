@@ -28,8 +28,8 @@ out_path="results/Epigenome_analysis"
  ${bigwig_path}/231127_PPT1_H3K27ac_S12_R1_001_RPGC_norm.bw \
  ${bigwig_path}/231127_PPT2_H3K27ac_S13_R1_001_RPGC_norm.bw \
  ${bigwig_path}/231127_PPT3_H3K27ac_S14_R1_001_RPGC_norm.bw \
-  -R ${prom_enh_path}/promoters_HFDdown_72_anno.bed \
- ${prom_enh_path}/promoters_HFDup_70_anno.bed \
+  -R ${prom_enh_path}/promoters_HFDup_70_anno.bed \
+  ${prom_enh_path}/promoters_HFDdown_72_anno.bed \
   -b 2000 -a 2000 \
   --outFileName ${out_path}/DB_H3K27ac_up_down_142prom_2K_R.import.gz -p 2
 
@@ -58,8 +58,8 @@ gunzip ${out_path}/DB_H3K27ac_up_down_142prom_2K_R.import.gz
   ${bigwig_path}/231127_PPT1_H3K27ac_S12_R1_001_RPGC_norm.bw \
   ${bigwig_path}/231127_PPT2_H3K27ac_S13_R1_001_RPGC_norm.bw \
   ${bigwig_path}/231127_PPT3_H3K27ac_S14_R1_001_RPGC_norm.bw \
-   -R  ${prom_enh_path}/enhancers_HFDdown_681_anno.bed \
- ${prom_enh_path}/enhancers_HFDup_1500_anno.bed \
+   -R  ${prom_enh_path}/enhancers_HFDup_1500_anno.bed \
+ ${prom_enh_path}/enhancers_HFDdown_681_anno.bed \
    -b 2000 -a 2000 \
    --outFileName ${out_path}/DB_H3K27ac_broad_up_down_2181enh_2K_R.import.gz -p 2
 
