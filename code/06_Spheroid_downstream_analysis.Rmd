@@ -41,6 +41,7 @@ library(ComplexHeatmap)
 # color palettes
 colPals <- list()
 colPals$RdBu <- rev(RColorBrewer::brewer.pal(n=11, name = 'RdBu'))
+colPals$BrBG <- rev(RColorBrewer::brewer.pal(n=11, name = 'BrBG'))
 colPals$UpDown <- setNames(colPals$RdBu[c(10,2)],
                            c('up', 'down'))
 
@@ -438,7 +439,6 @@ m <- df %>%
   dplyr::select(FFA.control.1_S10:TEADsf.inh.3_S18) %>% 
   scaleData(method = 'zscore') %>% 
   dplyr::bind_cols(dplyr::select(df, DPNVsHFDm:PPTVsHFDm))
-  
 
 p <- Heatmap(m, width = unit(40, "mm"), height = unit(260, "mm"),
              row_split = factor(df$Pathway, levels = unique(df$Pathway)),
@@ -457,6 +457,30 @@ p <- Heatmap(m, width = unit(40, "mm"), height = unit(260, "mm"),
              gap = unit(1, 'mm'),
              row_dend_width = unit(5, 'mm'),
              column_dend_height = unit(5, 'mm')) 
+
+p <- Heatmap(m[1:8], width = unit(27, "mm"), height = unit(260, "mm"), name = 'zscore',
+             row_split = factor(df$Pathway, levels = unique(df$Pathway)),
+             col = circlize::colorRamp2(breaks=seq(-2, 2, length.out=11),
+                                        colors=colPals$RdBu),
+             row_title = unique(df$Pathway),
+             row_title_gp = grid::gpar(fontsize = 6),
+             column_names_gp = grid::gpar(fontsize = 6),
+             cluster_row_slices = FALSE,
+             cluster_column_slices = FALSE,
+             border = T,
+             gap = unit(1, 'mm'),
+             row_dend_width = unit(5, 'mm'),
+             column_dend_height = unit(5, 'mm')) +
+  Heatmap(m[9:12], width = unit(13, "mm"), height = unit(260, "mm"), name = 'log2FC',
+             col = circlize::colorRamp2(breaks=seq(-2, 2, length.out=11),
+                                        colors=colPals$BrBG),
+             na_col = "grey80",
+             row_labels = setNames(df$external_gene_name, df$external_gene_name_unique)[rownames(m)],
+             row_names_gp = grid::gpar(fontsize = 6),
+             column_names_gp = grid::gpar(fontsize = 6),
+             border = T,
+             gap = unit(1, 'mm'),
+             column_dend_height = unit(5, 'mm'))
 
 draw(p)
 
