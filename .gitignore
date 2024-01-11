@@ -1,7 +1,6 @@
 *.Rhistory
 *.DS_Store
 *livercellatlas_feb2022.rds
-*random_models_38genes.rds
 *Bamfiles
 CK07*broadPeak
 CK07*narrowPeak

@@ -31,8 +31,6 @@ source('code/00_helper_functions.R')
 library(tidyverse)
 library(RColorBrewer)
 library(ComplexHeatmap)
-library(caret)
-library(multiROC)
 library(patchwork)
 
 ```
@@ -65,8 +63,8 @@ colPals$models_light <- setNames(c('#FAD7A0', '#BFC9CA', '#DF7B71'),
 
 ```{r}
 # mouse estrogen-sensitive enhancer-gene pairs
-mouse_45_ER_genes <- read.table(
-  file = 'results/Epigenome_analysis/corr_45genes_67enh_toPlot.txt',
+mouse_49_ER_genes <- read.table(
+  file = 'results/Epigenome_analysis/corr_49genes_76enh_toPlot.txt',
   stringsAsFactors = FALSE,
   sep = '\t',
   header = TRUE) %>% 
@@ -107,7 +105,7 @@ human_detectable <- names(human_detectable[human_detectable > 0.5])
 
 # filter ER genes for those expressed in human
 human_ER_genes <- mouse_human_orthologs %>% 
-  dplyr::filter(GeneSymbol_mouse %in% mouse_45_ER_genes) %>% 
+  dplyr::filter(GeneSymbol_mouse %in% mouse_49_ER_genes) %>% 
   dplyr::filter(GeneSymbol_human %in% human_detectable) %>%
   dplyr::filter(!duplicated(GeneSymbol_human)) %>%
   dplyr::pull(GeneSymbol_human)
@@ -153,7 +151,23 @@ mouse_log2FC_HFDmVsCDm <- DEGs$filt$CDmVsHFDm %>%
   tibble::column_to_rownames(var = 'GeneSymbol_human') %>% 
   dplyr::arrange(rownames(.))
 
-set.seed(4)
+mouse_log2FC_HFDfVsCDf <- DEGs$filt$CDfVsHFDf %>% 
+  dplyr::rename(GeneSymbol_mouse = external_gene_name) %>% 
+  dplyr::inner_join(mouse_human_orthologs, by = 'GeneSymbol_mouse') %>% 
+  dplyr::filter(GeneSymbol_human %in% human_ER_genes) %>% 
+  dplyr::filter(!duplicated(GeneSymbol_human)) %>% 
+  dplyr::select(GeneSymbol_human, log2FoldChange) %>% 
+  dplyr::mutate(log2FoldChange = log2FoldChange*-1) %>% 
+  dplyr::rename(HFDfVsCDf = log2FoldChange) %>% 
+  dplyr::mutate(HFDfVsCDf = ifelse(HFDfVsCDf>0, 'high', 'low')) %>% 
+  dplyr::add_row(GeneSymbol_human = dplyr::setdiff(rownames(mouse_log2FC_HFDmVsCDm),
+                                                   .$GeneSymbol_human), 
+                 HFDfVsCDf = 'unchanged') %>% 
+  dplyr::mutate(HFDfVsCDf = factor(HFDfVsCDf, levels = c('high','low', 'unchanged'))) %>% 
+  tibble::column_to_rownames(var = 'GeneSymbol_human') %>% 
+  dplyr::arrange(rownames(.))
+
+set.seed(30)
 clusters_ER_genes <- kmeans(human_stage, centers = 4, iter.max = 100)
 
 Heatmap(human_stage, width = unit(24, "mm"),name = "Stage", 
@@ -172,154 +186,9 @@ Heatmap(human_stage, width = unit(24, "mm"),name = "Stage",
           col = circlize::colorRamp2(breaks=seq(-max(abs(human_fibrosis)), max(abs(human_fibrosis)), length.out=11),
                                      colors=colPals$RdBu)) +
   Heatmap(mouse_log2FC_HFDmVsCDm, width = unit(8, "mm"), name = "Male mouse log2FC",
-          col = colPals$RdBu[c(10,2)])
-
-```
-
-
-# NAFLD classification models
-
-## NAFLD models
-
-```{r}
-models <- list()
-models[['Stage']] <- buildModel(dat = t(cohort_data$Govaere$cpm_filt),
-                                group = factor(cohort_data$Govaere$meta$Stage, levels = c('CTRL','NAFL','NASH')),
-                                method = 'glmnet',
-                                features = human_ER_genes,
-                                preproc = c('scale', 'center'),
-                                train_test_split = 0.6,
-                                tune_iter = 10,
-                                seed = 22)
-
-models[['NAS']] <- buildModel(dat = t(cohort_data$Govaere$cpm_filt),
-                              group = factor(cohort_data$Govaere$meta$NAS_class, levels = c('low','mid','high')),
-                              method = 'glmnet',
-                              features = human_ER_genes,
-                              preproc = c('scale', 'center'),
-                              train_test_split = 0.6,
-                              tune_iter = 10,
-                              seed = 22)
-
-models[['Fibrosis']] <- buildModel(dat = t(cohort_data$Govaere$cpm_filt),
-                                   group = factor(cohort_data$Govaere$meta$Fibrosis_class, levels = c('low','mid','high')),
-                                   method = 'glmnet',
-                                   features = human_ER_genes,
-                                   preproc = c('scale', 'center'),
-                                   train_test_split = 0.6,
-                                   tune_iter = 10,
-                                   seed = 22)
-
-saveRDS(models, file = 'results/nafld_classification_models.rds')
-
-```
-
-
-## Random gene set models
-
-```{r}
-# random gene sets for null distribution of prediction models
-# all_genes <- rownames(cohort_data$Govaere$cpm_filt)
-# random_genes <- lapply(seq(1,1000), function(x) sample(x = all_genes, size = length(human_ER_genes)))
-# saveRDS(random_genes, file = 'results/random_38gene_subsets.rds')
-
-# load random gene sets for reproducibility
-random_genes <- readRDS(file = 'results/random_38gene_subsets.rds')
-
-```
-
-```{r}
-# train random models (very long computing time!)
-# random_models <- list()
-# random_models[['Stage']] <- lapply(random_genes, function(x) {
-#   buildModel(dat = t(cohort_data$Govaere$cpm_filt),
-#              group = factor(cohort_data$Govaere$meta$Stage, levels = c('CTRL','NAFL','NASH')),
-#              method = 'glmnet',
-#              features = x,
-#              preproc = c('scale', 'center'),
-#              train_test_split = 0.6,
-#              tune_iter = 10,
-#              seed = 22)
-# })
-# random_models[['NAS']] <- lapply(random_genes, function(x) {
-#   buildModel(dat = t(cohort_data$Govaere$cpm_filt),
-#              group = factor(cohort_data$Govaere$meta$NAS_class, levels = c('low','mid','high')),
-#              method = 'glmnet',
-#              features = x,
-#              preproc = c('scale', 'center'),
-#              train_test_split = 0.6,
-#              tune_iter = 10,
-#              seed = 22)
-# })
-# random_models[['Fibrosis']] <- lapply(random_genes, function(x) {
-#   buildModel(dat = t(cohort_data$Govaere$cpm_filt),
-#              group = factor(cohort_data$Govaere$meta$Fibrosis_class, levels = c('low','mid','high')),
-#              method = 'glmnet',
-#              features = x,
-#              preproc = c('scale', 'center'),
-#              train_test_split = 0.6,
-#              tune_iter = 10,
-#              seed = 22)
-# })
-
-# saveRDS(random_models, file = 'Results/random_models_38genes.rds')
-
-random_models <- readRDS(file = 'results/random_models_38genes.rds')
-
-```
-
-
-## Predictive potential of ER regulated genes vs random gene sets
-
-```{r, fig.width=10, fig.height=8}
-p <- list()
-
-df <- data.frame(auc = lapply(random_models$Stage, function(x) x$resultsROC$AUC$model$micro) %>% unlist())
-val <- models$Stage$resultsROC$AUC$model$micro
-pval <- tailFraction(val, df$auc, tail = 'right')
-p[[1]] <- ggplot(df, aes(x = auc)) +
-  geom_density(lwd = 1, colour = '#F6B651',
-               fill = '#FAD7A0', alpha = 1) +
-  geom_vline(xintercept = val, lwd = 1.5) +
-  scale_x_continuous(limits = c(0.8,1)) +
-  scale_y_continuous(expand = expansion(mult = c(0, .1))) +
-  annotate("text",  x=Inf, y = Inf, label = paste('P =',pval), vjust=1.5, hjust=1.2, size=5) +
-  xlab('Area Under the Receiver Operating Characteristics (AUROC)') +
-  ylab('Density') +
-  ggtitle('Stage') +
-  theme_bw()
-
-df <- data.frame(auc = lapply(random_models$NAS, function(x) x$resultsROC$AUC$model$micro) %>% unlist())
-val <- models$NAS$resultsROC$AUC$model$micro
-pval <- tailFraction(val, df$auc, tail = 'right')
-p[[2]] <- ggplot(df, aes(x = auc)) +
-  geom_density(lwd = 1, colour = '#92A3A5',
-               fill = '#BFC9CA', alpha = 1) +
-  geom_vline(xintercept = val, lwd = 1.5) +
-  scale_x_continuous(limits = c(0.8,1)) +
-  scale_y_continuous(expand = expansion(mult = c(0, .1))) +
-  annotate("text",  x=Inf, y = Inf, label = paste('P =',pval), vjust=1.5, hjust=1.2, size=5) +
-  xlab('Area Under the Receiver Operating Characteristics (AUROC)') +
-  ylab('Density') +
-  ggtitle('NAS') +
-  theme_bw()
-
-df <- data.frame(auc = lapply(random_models$Fibrosis, function(x) x$resultsROC$AUC$model$micro) %>% unlist())
-val <- models$Fibrosis$resultsROC$AUC$model$micro
-pval <- tailFraction(val, df$auc, tail = 'right')
-p[[3]] <- ggplot(df, aes(x = auc)) +
-  geom_density(lwd = 1, colour = '#972D22',
-               fill = '#DF7B71', alpha = 1) +
-  geom_vline(xintercept = val, lwd = 1.5, color = 'black') +
-  scale_x_continuous(limits = c(0.6,0.9)) +
-  scale_y_continuous(expand = expansion(mult = c(0, .1))) +
-  annotate("text",  x=Inf, y = Inf, label = paste('P =',pval), vjust=1.5, hjust=1.2, size=5) +
-  xlab('Area Under the Receiver Operating Characteristics (AUROC)') +
-  ylab('Density') +
-  ggtitle('Fibrosis') +
-  theme_bw()
-
-patchwork::wrap_plots(p, nrow=2, ncol=2, byrow=T)
+          col = c('#199478', '#67227D')) +
+  Heatmap(mouse_log2FC_HFDfVsCDf, width = unit(8, "mm"), name = "Female mouse log2FC",
+          col = c('#F29724', '#8C510A', 'grey'))
 
 ```
 
