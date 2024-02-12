@@ -369,8 +369,9 @@ library(ggpubr)
     theme(axis.text = element_text(size=14),
           strip.background = element_rect(colour="black",
                                         fill="white")) +
-    facet_wrap(vars(symbol, loc_ID), scales = "free", ncol=8) 
-#ggsave("results/Appendix.pdf", width = 50, height=55, units="cm", limitsize=FALSE)  
+    facet_wrap(vars(symbol, loc_ID), scales = "free", ncol=8) +
+     stat_cor(method="pearson", p.digits=0, size=4, cor.coef.name = "r")
+ggsave("results/AppendixFigS3_p_r.pdf", width = 40, height=48, units="cm", limitsize=FALSE)  
 
 Acot_filt <- K27_GE_long_group_plot_filt %>% dplyr::filter(grepl("Acot", symbol))
 ggscatter(Acot_filt, x = "H3K27ac", y="Gene_expression", add = "reg.line",
@@ -384,7 +385,7 @@ ggscatter(Acot_filt, x = "H3K27ac", y="Gene_expression", add = "reg.line",
           strip.background = element_rect(colour="black",
                                         fill="white")) +
     facet_wrap(vars(symbol, loc_ID), scales="free", ncol=3) 
-#ggsave("results/FigEV4F.pdf", width = 20, height=12, units="cm")
+ggsave("results/FigEV4F.pdf", width = 20, height=10, units="cm")
 
 
 # plot Tead1

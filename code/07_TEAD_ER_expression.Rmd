@@ -175,8 +175,8 @@ p <- lapply(TEAD_genes, function(x){
   theme(legend.position="none")
 })
 
-patchwork::wrap_plots(p, nrow=2, ncol=2, byrow=T)
 
+patchwork::wrap_plots(p, nrow=2, ncol=2, byrow=T)
 ```
 
 ## Human NAFLD patient cohort

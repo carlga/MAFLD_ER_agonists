@@ -95,17 +95,22 @@ data <- read.delim("data/siTEAD1_Seahorse")
 
 library(dplyr)
 library(ggplot2)
-data.grouped <- data %>% mutate(OCR_umol_per_l = Value/1000) %>% group_by(Condition, SeahorseStage) %>%  mutate(mean=mean(OCR_umol_per_l))
+data.grouped <- data %>% mutate(OCR_umol_per_l = Value/1000) %>% group_by(Condition, SeahorseStage) %>%  mutate(mean=mean(OCR_umol_per_l)) %>% 
+  mutate(STDEV=sd(OCR_umol_per_l))
 
 order = c("Basal", "Oligomycin", "FCCP")
-ggplot(data.grouped, aes(x=factor(SeahorseStage, levels=order), y=mean, fill=Condition)) + 
-  geom_col(position=position_dodge(width=0.9), color="black") +
-  geom_point(position=position_dodge(width=0.9), shape=21,color="black",  aes(y=OCR_umol_per_l)) +
+ggplot(data.grouped, aes(x=factor(SeahorseStage, levels=order))) + 
+  geom_errorbar(aes(ymax=mean+STDEV, ymin=mean-STDEV, fill=Condition), position=position_dodge(width=0.9), width=0.4, color="black") +
+  geom_col(aes(y=mean, fill=Condition), position=position_dodge(width=0.9), color="black") +
+  geom_point(aes(y=OCR_umol_per_l, fill=Condition), position=position_jitterdodge(dodge.width=0.9, jitter.width = 0.05), shape=21, color="black", size=1) +
   theme(axis.text=element_text(size=18)) +
   theme_bw() +
   ylab("OCR (µmol/min)") +
   xlab("") +
+  scale_y_continuous(limits = c(0,20), breaks = c(0, 5, 10, 15, 20)) +
   scale_fill_manual(values=c("#666666", "lightgrey"))
+
+
 
 data.grouped.basal <- data.grouped %>% filter(SeahorseStage == "Basal")
 data.grouped.oligo <- data.grouped %>% filter(SeahorseStage == "Oligomycin")
@@ -114,6 +119,9 @@ t.test( data.grouped.basal$Value ~ data.grouped.basal$Condition)
 t.test( data.grouped.oligo$Value ~ data.grouped.oligo$Condition)
 t.test( data.grouped.FCCP$Value ~ data.grouped.FCCP$Condition) 
 
+ggsave("results/Seahorse_Fig.pdf", width=3.6, height=4)
+
+table(data.grouped$Condition)
 ```
 
 
