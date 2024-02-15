@@ -1,4 +1,8 @@
 *.Rhistory
+*Appendix*.pdf
+*.RData
+*Fig*.pdf
+*fig*.pdf
 *.DS_Store
 *livercellatlas_feb2022.rds
 *Bamfiles
